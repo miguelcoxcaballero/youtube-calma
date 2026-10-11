@@ -20,7 +20,7 @@ El compilador genera la identidad del manifiesto desde `CalmaBuild.java`, inclui
 
 ## Actualizaciones A/B (0.1.6)
 
-**A: cambios recientes. B: versiones revisadas.** Aviso opcional con versión instalada/nueva, versiones saltadas y hasta tres cambios breves. «Recordármelo más tarde» aplaza 14 días; la comprobación manual sigue disponible. B solo se publica por petición expresa. El código se mantiene en [Inhouse services updater](https://github.com/miguelcoxcaballero/inhouse-services-updater); cualquier cambio se sincroniza en las cinco apps. [Instrucciones](UPDATER.md).
+**A: cambios recientes. B: versiones revisadas.** Aviso opcional con versión instalada/nueva, versiones saltadas y hasta tres cambios breves. «Recordármelo más tarde» aplaza 14 días; la comprobación manual sigue disponible. B solo se publica por petición expresa. A incluye todas las versiones A y B y ofrece la de mayor `versionCode`; B recibe solo versiones B. El código se mantiene en [Inhouse services updater](https://github.com/miguelcoxcaballero/inhouse-services-updater); cualquier cambio se sincroniza en las cinco apps. [Instrucciones](UPDATER.md).
 
 ## Notificaciones y web (0.1.5)
 
