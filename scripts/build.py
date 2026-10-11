@@ -31,7 +31,7 @@ run(a.build_tools/'apksigner','verify','--verbose','--print-certs',apk)
 run(a.build_tools/'zipalign','-c','-P','16','4',apk)
 # Validate the actual signed manifest before announcing a downloadable update.
 verify_apk(apk,a.build_tools,version,version_code)
-manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Reviewed default and safer development opt-in.'}
+manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Reordered navigation and aligned settings icon.'}
 (ROOT/'android-update.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+'\n')
 (dist/'SHA256SUMS.txt').write_text(sha(apk)+'  '+apk.name+'\n')
 (dist/'build-info.json').write_text(json.dumps({'version':version,'base':lock,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'patchBundleSha256':sha(build/'patches.jar'),'extensionSha256':sha(build/'classes.dex'),'signedInAccountTested':False},indent=2)+'\n')

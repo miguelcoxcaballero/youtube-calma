@@ -66,7 +66,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
                 if (name.startsWith("$PKG.revanced_")) alias.setAttribute("android:enabled", (name == "$PKG.revanced_original_1").toString())
             }
         }
-        for (path in listOf("assets/inhouse-logo.png", "res/drawable-nodpi/inhouse_launcher_art.png", "res/drawable/inhouse_launcher_foreground.xml", "res/drawable/inhouse_launcher_background.xml", "res/mipmap-anydpi/inhouse_launcher.xml", "res/mipmap-anydpi-v26/inhouse_launcher.xml", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/updater.css", "assets/updates/host.css", "assets/updates/host.js", "assets/updates/config.json", "res/xml/calma_update_file_paths.xml")) {
+        for (path in listOf("assets/inhouse-logo.png", "res/drawable/inhouse_settings_icon.xml", "res/drawable-nodpi/inhouse_launcher_art.png", "res/drawable/inhouse_launcher_foreground.xml", "res/drawable/inhouse_launcher_background.xml", "res/mipmap-anydpi/inhouse_launcher.xml", "res/mipmap-anydpi-v26/inhouse_launcher.xml", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/updater.css", "assets/updates/host.css", "assets/updates/host.js", "assets/updates/config.json", "res/xml/calma_update_file_paths.xml")) {
             val target=get(path);target.parentFile.mkdirs()
             Resources::class.java.getResourceAsStream("/calma-res/$path")!!.use { input -> target.outputStream().use { input.copyTo(it) } }
         }
@@ -76,9 +76,10 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             val original=(0 until intents.length).map { intents.item(it) as Element }
                 .single { it.getAttribute("android:data")=="revanced_settings_intent" }.parentNode as Element
             val entry=xml.createElement("Preference")
-            for(attribute in listOf("android:layout","app:iconSpaceReserved")) {
+            for(attribute in listOf("android:layout","android:iconSpaceReserved","app:iconSpaceReserved")) {
                 if(original.hasAttribute(attribute))entry.setAttribute(attribute,original.getAttribute(attribute))
             }
+            entry.setAttribute("android:icon","@drawable/inhouse_settings_icon")
             entry.setAttribute("android:key","inhouse_youtube_settings")
             entry.setAttribute("android:title","Inhouse YouTube settings")
             val intent=xml.createElement("intent")
@@ -111,6 +112,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             it.createPublicId("style","CalmaUpdatePopupTheme")
             it.createPublicId("style","CalmaSettingsTheme")
             it.createPublicId("xml","calma_update_file_paths")
+            it.createPublicId("drawable", "inhouse_settings_icon")
             it.createPublicId("drawable", "inhouse_launcher_art")
             it.createPublicId("drawable", "inhouse_launcher_foreground")
             it.createPublicId("drawable", "inhouse_launcher_background")

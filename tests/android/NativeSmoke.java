@@ -81,14 +81,23 @@ public final class NativeSmoke extends Instrumentation {
     private void settingsEntry(Context context) throws Exception {
         for(String layout:Arrays.asList("settings_fragment","settings_fragment_cairo")) {
             android.content.res.XmlResourceParser xml=context.getResources().getXml(context.getResources().getIdentifier(layout,"xml",context.getPackageName()));
-            boolean revanced=false,found=false;String next="";
+            boolean revanced=false,found=false;String next="";int rowLayout=0;String iconSpace=null;
             for(int event=xml.getEventType();event!=org.xmlpull.v1.XmlPullParser.END_DOCUMENT;event=xml.next()) {
                 if(event!=org.xmlpull.v1.XmlPullParser.START_TAG)continue;
+                if(!revanced && "Preference".equals(xml.getName())) {
+                    rowLayout=xml.getAttributeResourceValue("http://schemas.android.com/apk/res/android","layout",0);
+                    iconSpace=xml.getAttributeValue("http://schemas.android.com/apk/res-auto","iconSpaceReserved");
+                }
                 if("intent".equals(xml.getName()) && "revanced_settings_intent".equals(xml.getAttributeValue("http://schemas.android.com/apk/res/android","data")))revanced=true;
                 else if(revanced && "Preference".equals(xml.getName())) {
                     next=xml.getAttributeValue("http://schemas.android.com/apk/res/android","key");
                     check("inhouse_youtube_settings".equals(next),"Inhouse immediately below ReVanced: "+layout);
-                    check("Inhouse YouTube settings".equals(xml.getAttributeValue("http://schemas.android.com/apk/res/android","title")),"Inhouse native label");found=true;break;
+                    check("Inhouse YouTube settings".equals(xml.getAttributeValue("http://schemas.android.com/apk/res/android","title")),"Inhouse native label");
+                    check(rowLayout==xml.getAttributeResourceValue("http://schemas.android.com/apk/res/android","layout",0),"Inhouse shares ReVanced row layout: "+layout);
+                    check(java.util.Objects.equals(iconSpace,xml.getAttributeValue("http://schemas.android.com/apk/res-auto","iconSpaceReserved")),"Native icon column spacing matches: "+layout);
+                    int icon=xml.getAttributeResourceValue("http://schemas.android.com/apk/res/android","icon",0);
+                    check(icon!=0 && "inhouse_settings_icon".equals(context.getResources().getResourceEntryName(icon)),"Native Inhouse settings icon exists: "+layout);
+                    check(context.getDrawable(icon).getIntrinsicWidth()>0,"Inhouse icon renders in the native row");found=true;break;
                 }
             }
             xml.close();check(found,"Inhouse row exists: "+layout);
@@ -141,8 +150,8 @@ public final class NativeSmoke extends Instrumentation {
         List<Object> input=Arrays.asList(home,subscriptions,account);
         List<?> result=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},input);
         check(result.size()==4,"Missing notification pivot is inserted");
-        check(result.get(0)==home && result.get(1)==subscriptions && result.get(3)==account,"Original pivots preserved around native inbox");
-        Object notification=result.get(2);check("FEactivity".equals(pivotId(notification)),"Notifications directly between subscriptions and account");
+        check(result.get(0)==home && result.get(1)==subscriptions && result.get(2)==account,"Original pivots preserved around native inbox");
+        Object notification=result.get(3);check("FEactivity".equals(pivotId(notification)),"Notifications after the center account tab");
         Object model=notification.getClass().getField("a").get(notification);
         Object endpoint=model.getClass().getField("g").get(model);
         check("FEactivity".equals(type("aigv").getMethod("bk",type("avfw")).invoke(null,endpoint)),"Native command decoder resolves the real notification inbox");
@@ -152,7 +161,11 @@ public final class NativeSmoke extends Instrumentation {
         check("TAB_ACTIVITY_CAIRO".equals(((Enum<?>)bell).name()),"Original YouTube bell icon");
         List<?> again=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},result);check(again==result,"Native inbox insertion is idempotent");
         List<?> reordered=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},Arrays.asList(notification,home,subscriptions,notification,account));
-        check(reordered.size()==4 && reordered.get(2)==notification,"Existing server inbox preserved, reordered and deduplicated");
+        check(reordered.size()==4 && reordered.get(3)==notification && reordered.get(2)==account,"Existing server inbox preserved, reordered and deduplicated");
+        List<?> scrambled=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},Arrays.asList(account,home,notification,subscriptions));
+        check(scrambled.get(1)==subscriptions && scrambled.get(2)==account && scrambled.get(3)==notification,"Server pivot order cannot move profile away from the center");
+        List<Object> unsupported=Arrays.asList(home,account);
+        check(call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},unsupported)==unsupported,"Missing subscriptions preserves original navigation");
         call("es.calma.youtube.nativeapp.CalmaSwitch","setEnabled",new Class[]{boolean.class},false);
         check(call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},input)==input,"Master off keeps original pivot list");
         call("es.calma.youtube.nativeapp.CalmaSwitch","setEnabled",new Class[]{boolean.class},true);

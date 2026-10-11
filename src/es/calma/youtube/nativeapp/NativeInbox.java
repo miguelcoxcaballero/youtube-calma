@@ -49,14 +49,17 @@ public final class NativeInbox {
     public static Object tabs(Object original) {
         if(!CalmaSwitch.enabled() || !(original instanceof List))return original;
         try {
-            List<?> input=(List<?>)original;ArrayList<Object> result=new ArrayList<>();Object inbox=null;int subscription=-1;
+            List<?> input=(List<?>)original;ArrayList<Object> result=new ArrayList<>();Object inbox=null,account=null;int subscription=-1;
             for(Object tab:input){
                 if(notification(tab)){if(inbox==null)inbox=tab;continue;}
+                if("FElibrary".equals(identity(tab))){account=tab;continue;}
                 result.add(tab);if("FEsubscriptions".equals(identity(tab)))subscription=result.size()-1;
             }
-            if(subscription<0)return original;
+            if(subscription<0 || account==null)return original;
             if(inbox==null)inbox=notificationTab();
-            result.add(subscription+1,inbox);
+            // Retain the original account model, including its avatar and navigation command.
+            result.add(subscription+1,account);
+            result.add(subscription+2,inbox);
             if(result.equals(input))return original;
             return type("arbh").getMethod("n",Iterable.class).invoke(null,result);
         }catch(Exception failure){if(!logged){logged=true;Log.e("InhouseInbox","Could not bind native notification tab",failure);}return original;}
