@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Run the exact signed APK and its native instrumentation on official Android."""
-import argparse,hashlib,json,os,re,shutil,subprocess,time,urllib.request,traceback
+import argparse,base64,hashlib,json,os,re,shutil,subprocess,time,urllib.request,traceback
 import xml.etree.ElementTree as ET
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
@@ -86,6 +86,14 @@ try:
             report['ui-'+mode]=list(dict.fromkeys(node.get('text') or node.get('content-desc') for node in ET.parse(ui).iter('node') if node.get('text') or node.get('content-desc')))
     smoke=ROOT/'runtime-input/YouTube-Calma-Smoke.apk';assert sha(smoke)==transport['smokeSha256']
     required(adb('install','--no-incremental',smoke),'install-tests')
+    icons=required(adb('shell','am','instrument','-w','-r','-e','profile','settings-icon','es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'settings-icon')
+    assert 'CALMA_SETTINGS_ICON_OK' in icons,icons
+    report['settingsIconRendering']={}
+    for layout in ('settings_fragment','settings_fragment_cairo'):
+        encoded=re.search(r'INSTRUMENTATION_RESULT: inhouseSettingsIconPng_'+layout+r'=([^\r\n]+)',icons)
+        assert encoded, 'Missing rendered settings icon: '+layout
+        preview=OUT/(layout+'-icon.png');preview.write_bytes(base64.b64decode(encoded[1],validate=True))
+        report['settingsIconRendering'][layout]={'passed':True,'preview':preview.name,'tints':['white','dark'],'transparentBackground':True}
     report['profiles']=[]
     for phase in ['disable','restore']:
         profile=required(adb('shell','am','instrument','-w','-e','profile',phase,'es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'profile-'+phase)

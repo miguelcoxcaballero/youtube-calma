@@ -78,7 +78,48 @@ public final class NativeSmoke extends Instrumentation {
         return evidence.toString();
     }
     @Override public void onCreate(Bundle args) { super.onCreate(args);phase=args==null?null:args.getString("profile");start(); }
-    private void settingsEntry(Context context) throws Exception {
+    private String settingsIcon(Context context,int resource,String layout) throws Exception {
+        // YouTube tints preference icons as one alpha mask. An opaque brand
+        // tile becomes a solid square, even when its untinted artwork is valid.
+        final int side=96;
+        android.graphics.Bitmap preview=android.graphics.Bitmap.createBitmap(side*2,side,android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas previewCanvas=new android.graphics.Canvas(preview);
+        android.graphics.Paint background=new android.graphics.Paint();
+        int[] alpha=null;
+        int[] tints={android.graphics.Color.WHITE,0xff202020};
+        for(int theme=0;theme<tints.length;theme++) {
+            android.graphics.drawable.Drawable icon=context.getDrawable(resource).mutate();
+            check(icon.getIntrinsicWidth()>0 && icon.getIntrinsicHeight()>0,"Inhouse icon has native dimensions: "+layout);
+            icon.setColorFilter(tints[theme],android.graphics.PorterDuff.Mode.SRC_IN);
+            android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(side,side,android.graphics.Bitmap.Config.ARGB_8888);
+            icon.setBounds(0,0,side,side);icon.draw(new android.graphics.Canvas(bitmap));
+            String label=layout+(theme==0?" dark theme":" light theme");
+            int[] pixels=new int[side*side];bitmap.getPixels(pixels,0,side,0,0,side,side);
+            int visible=0;boolean correctTint=true,sameMask=true;
+            for(int i=0;i<pixels.length;i++) {
+                int opacity=android.graphics.Color.alpha(pixels[i]);
+                if(opacity>0)visible++;
+                if(opacity>220 && (Math.abs(android.graphics.Color.red(pixels[i])-android.graphics.Color.red(tints[theme]))>1
+                        || Math.abs(android.graphics.Color.green(pixels[i])-android.graphics.Color.green(tints[theme]))>1
+                        || Math.abs(android.graphics.Color.blue(pixels[i])-android.graphics.Color.blue(tints[theme]))>1))correctTint=false;
+                if(alpha!=null && alpha[i]!=opacity)sameMask=false;
+            }
+            check(visible>pixels.length/50 && visible<pixels.length*15/100,"Tinted settings icon is a glyph, not an opaque tile: "+label+" visible="+visible);
+            check(correctTint,"Native tint colors the glyph: "+label);
+            check(sameMask,"Native tint preserves the glyph silhouette: "+label);
+            for(int[] point:new int[][]{{0,0},{95,0},{0,95},{95,95},{24,24},{72,24},{48,64}})
+                check(android.graphics.Color.alpha(bitmap.getPixel(point[0],point[1]))==0,"Settings icon background stays transparent: "+label+" at "+Arrays.toString(point));
+            for(int[] point:new int[][]{{48,36},{36,48},{60,48}})
+                check(android.graphics.Color.alpha(bitmap.getPixel(point[0],point[1]))>220,"Inhouse chevron remains visible: "+label+" at "+Arrays.toString(point));
+            if(alpha==null){alpha=new int[pixels.length];for(int i=0;i<pixels.length;i++)alpha[i]=android.graphics.Color.alpha(pixels[i]);}
+            background.setColor(theme==0?android.graphics.Color.BLACK:android.graphics.Color.WHITE);
+            previewCanvas.drawRect(theme*side,0,(theme+1)*side,side,background);
+            previewCanvas.drawBitmap(bitmap,theme*side,0,null);bitmap.recycle();
+        }
+        ByteArrayOutputStream output=new ByteArrayOutputStream();preview.compress(android.graphics.Bitmap.CompressFormat.PNG,100,output);preview.recycle();
+        return android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP);
+    }
+    private void settingsEntry(Context context,Bundle result) throws Exception {
         for(String layout:Arrays.asList("settings_fragment","settings_fragment_cairo")) {
             android.content.res.XmlResourceParser xml=context.getResources().getXml(context.getResources().getIdentifier(layout,"xml",context.getPackageName()));
             boolean revanced=false,found=false;String next="";int rowLayout=0;String iconSpace=null;
@@ -97,7 +138,7 @@ public final class NativeSmoke extends Instrumentation {
                     check(java.util.Objects.equals(iconSpace,xml.getAttributeValue("http://schemas.android.com/apk/res-auto","iconSpaceReserved")),"Native icon column spacing matches: "+layout);
                     int icon=xml.getAttributeResourceValue("http://schemas.android.com/apk/res/android","icon",0);
                     check(icon!=0 && "inhouse_settings_icon".equals(context.getResources().getResourceEntryName(icon)),"Native Inhouse settings icon exists: "+layout);
-                    check(context.getDrawable(icon).getIntrinsicWidth()>0,"Inhouse icon renders in the native row");found=true;break;
+                    result.putString("inhouseSettingsIconPng_"+layout,settingsIcon(context,icon,layout));found=true;break;
                 }
             }
             xml.close();check(found,"Inhouse row exists: "+layout);
@@ -209,11 +250,14 @@ public final class NativeSmoke extends Instrumentation {
             check(activity!=null,"native activity initialized");
             check(call("app.revanced.extension.shared.Utils","getContext",new Class[]{})!=null,"ReVanced context initialized by native activity");
             SharedPreferences prefs=context.getSharedPreferences("revanced_prefs",0);
+            if("settings-icon".equals(phase)) {
+                settingsEntry(context,result);result.putString("stream","CALMA_SETTINGS_ICON_OK checks="+checks+"\n");finish(-1,result);return;
+            }
             if(phase!=null) { profilePhase(context,prefs,result);return; }
             long manifestCode=context.getPackageManager().getPackageInfo(context.getPackageName(),0).getLongVersionCode();
             check(manifestCode==type("es.calma.youtube.nativeapp.CalmaBuild").getField("VERSION_CODE").getInt(null),"Actual installed Android versionCode matches updater versionCode");
             check(manifestCode>1557278150L,"Actual installed code is strictly newer than 0.1.5 and 0.1.6");
-            settingsEntry(context);
+            settingsEntry(context,result);
             inboxModels();
                 result.putString("inhouseIconPng",brandingIcon(context));
             check(prefs.getBoolean("calma_preset_v1",false),"preset must load during Application.onCreate");
