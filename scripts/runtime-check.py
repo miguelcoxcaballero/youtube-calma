@@ -51,13 +51,14 @@ try:
     adb('logcat','-b','all','-c')
     resolved=required(adb('shell','cmd','package','resolve-activity','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER',PKG),'launcher')
     component=[line.strip() for line in resolved.splitlines() if '/' in line and PKG in line][-1]
-    required(adb('shell','am','start','-W','-n',component),'launch')
+    required(adb('shell','am','start','-W','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER','-n',component),'launch')
     samples=[]
     for n in range(6):
         time.sleep(5);samples.append(adb('shell','pidof',PKG).stdout.strip())
     report['pids']=samples
     assert all(samples) and len(set(samples))==1,'App exited or restarted during launch'
     logs=required(adb('logcat','-b','all','-d'),'startup-logcat')
+    report['startupActivityEvents']=[line for line in logs.splitlines() if ('ActivityTaskManager' in line or 'ActivityManager' in line) and (PKG in line or 'START u0' in line)]
     assert not re.search(r'Process: '+re.escape(PKG)+r'[,\s]|ANR in '+re.escape(PKG),logs),'Crash/ANR in app'
     for mode in ['no','yes']:
         adb('shell','cmd','uimode','night',mode);time.sleep(3)
