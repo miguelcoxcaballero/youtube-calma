@@ -4,6 +4,8 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 
 [Descargar APK 0.1.11 · B](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.11/YouTube-Calma-0.1.11.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.11)
 
+[Descargar APK 0.1.12 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.12/YouTube-Calma-0.1.12.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.12)
+
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
 - Shorts se ocultan en Inicio, Suscripciones, canales, búsqueda, historial y descripción. Se ocultan los botones Shorts y Crear.
@@ -11,6 +13,12 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 - El preset de [settings.json](settings.json), con las peticiones posteriores de [navigation-settings.json](navigation-settings.json), se aplica antes de inicializar los ajustes de ReVanced. Las actualizaciones conservan las elecciones posteriores y los contadores de SponsorBlock.
 - Inhouse YouTube settings aparece debajo de ReVanced con su icono y la misma plantilla nativa de fila, incluida la reserva de espacio para iconos.
 - **Inhouse services updater** comprueba al abrir la app. En **Inhouse YouTube settings → Actualizaciones · A/B** puedes elegir canal y comprobar manualmente.
+
+## Colores del actualizador (0.1.12 · A)
+
+El popup usa grises neutros en modo claro y oscuro, sin el tono anaranjado de la paleta anterior. Sincroniza Inhouse services updater 1.2.1 desde su repositorio compartido. B continúa en la 0.1.11.
+
+Verificada la APK pública, su firma y los recursos del actualizador. Supera las pruebas del popup y 247 comprobaciones nativas por API en Android 14, 15 y 16, incluida la actualización sobre 0.1.5 y la apertura del instalador. [Resultados](validation/0.1.12.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38178482369).
 
 ## Actualizador nuevo (0.1.11 · B)
 
@@ -77,7 +85,7 @@ La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nat
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.11` y Android `versionCode=1557278156`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.12` y Android `versionCode=1557278157`.
 
 La 0.1.5 ha superado 181 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Incluyen los modelos nativos de Notificaciones, su posición, deduplicación y ruta al buzón; el clic real del logo hacia la web; iconos, ajustes, perfiles y apertura del instalador hasta su confirmación. [Resultados y alcance](validation/0.1.5.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38141579965). La confirmación de instalación se cancela en las pruebas.
 
