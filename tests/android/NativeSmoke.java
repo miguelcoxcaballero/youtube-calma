@@ -388,7 +388,8 @@ final class SharedUpdateSmoke {
             org.json.JSONObject release=new org.json.JSONObject().put("version","99.0.0").put("versionCode",code).put("apkUrl","https://github.com/"+repo+"/releases/download/test/update.apk").put("apkSha256",String.format("%064d",0)).put("apkSizeBytes",1).put("releasedAt","2026-10-11T00:00:00Z").put("changelog","Prueba del aviso.");
             org.json.JSONObject catalog=new org.json.JSONObject().put("schemaVersion",1).put("channel","A").put("latest",release).put("releases",new org.json.JSONArray().put(release));
             if(!"true".equals(eval(test,web,"InhouseUpdater.offerPending("+catalog+")")))throw new AssertionError("Optional update popup missing");
-            String labels=eval(test,web,"document.body.innerText");if(!labels.contains("Remind me later")||!labels.contains("99.0.0")||!labels.contains(version))throw new AssertionError("Popup labels missing: "+labels);
+            String labels=eval(test,web,"document.body.innerText");if(!labels.contains("99.0.0")||!labels.contains(version))throw new AssertionError("Popup labels missing: "+labels);
+            if(!"true".equals(eval(test,web,"Array.from(document.querySelectorAll('button')).some(button => button.textContent.trim() === 'Later')")))throw new AssertionError("Optional Later action missing");
             eval(test,web,"InhouseUpdater.close(true)");
             long delay=new org.json.JSONObject(prefs.getString("state","{}")).getJSONObject("snooze").getLong("A")-System.currentTimeMillis();
             if(delay<14L*86400000-10000||delay>14L*86400000)throw new AssertionError("Reminder is not fourteen days");
