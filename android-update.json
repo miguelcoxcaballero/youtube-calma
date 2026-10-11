@@ -1,9 +1,9 @@
 {
-  "version": "0.1.6",
-  "versionCode": 1557278151,
+  "version": "0.1.7",
+  "versionCode": 1557278152,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.6/YouTube-Calma-0.1.6.apk",
-  "apkSha256": "0d7c0c9f2b7ccf6d6c90f0dc44a534b170782ac7bd7abd5254a90291c6371fa7",
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.7/YouTube-Calma-0.1.7.apk",
+  "apkSha256": "db93b05a72351fa4033dd6b7e16f10ab2ba1c27f8ce6e800cb0087536891ef49",
   "apkSizeBytes": 183345997,
-  "releaseNotes": "Canales A/B y recordatorio opcional."
+  "releaseNotes": "Corregida la instalación de actualizaciones."
 }

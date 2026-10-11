@@ -197,6 +197,9 @@ public final class NativeSmoke extends Instrumentation {
             check(call("app.revanced.extension.shared.Utils","getContext",new Class[]{})!=null,"ReVanced context initialized by native activity");
             SharedPreferences prefs=context.getSharedPreferences("revanced_prefs",0);
             if(phase!=null) { profilePhase(context,prefs,result);return; }
+            long manifestCode=context.getPackageManager().getPackageInfo(context.getPackageName(),0).getLongVersionCode();
+            check(manifestCode==type("es.calma.youtube.nativeapp.CalmaBuild").getField("VERSION_CODE").getInt(null),"Actual installed Android versionCode matches updater versionCode");
+            check(manifestCode>1557278150L,"Actual installed code is strictly newer than 0.1.5 and 0.1.6");
             settingsEntry(context);
             inboxModels();
                 result.putString("inhouseIconPng",brandingIcon(context));

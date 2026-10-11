@@ -22,7 +22,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278150")
+            manifest.setAttribute("android:versionCode", RELEASE_VERSION_CODE.toString())
             val app = manifest.getElementsByTagName("application").item(0) as Element
             app.setAttribute("android:icon", "@mipmap/inhouse_launcher")
             app.setAttribute("android:roundIcon", "@mipmap/inhouse_launcher")
@@ -56,7 +56,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to authority, "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.5"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to RELEASE_VERSION))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {

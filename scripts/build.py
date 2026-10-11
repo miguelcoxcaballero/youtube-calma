@@ -2,6 +2,7 @@
 """Patch only the hash-pinned, user-supplied ReVanced APK; reuse its native UI."""
 import argparse,hashlib,json,os,re,subprocess,zipfile
 from pathlib import Path
+from release_metadata import release_version, verify_apk
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('--morphe',type=Path,required=True);p.add_argument('--build-tools',type=Path,required=True);p.add_argument('--keystore',type=Path,required=True);p.add_argument('--skip-patch',action='store_true');a=p.parse_args()
 for key,value in vars(a).items():
@@ -22,15 +23,15 @@ with zipfile.ZipFile(build/'patched.apk') as z,zipfile.ZipFile(build/'clean.apk'
         if info.filename in ['assets/dexopt/baseline.prof','assets/dexopt/baseline.profm']:continue
         out.writestr(info,z.read(info))
 run(a.build_tools/'zipalign','-f','-P','16','4',build/'clean.apk',build/'aligned.apk')
-version_source=(ROOT/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()
-version=re.search(r'VERSION = "([^"]+)"',version_source)[1]
-version_code=int(re.search(r'VERSION_CODE = (\d+)',version_source)[1])
+version,version_code=release_version()
 apk=dist/f'YouTube-Calma-{version}.apk'
 env=dict(os.environ);env.setdefault('CALMA_KEYSTORE_PASSWORD','localbuild')
 run(a.build_tools/'apksigner','sign','--ks',a.keystore,'--ks-key-alias','calma','--ks-pass','env:CALMA_KEYSTORE_PASSWORD','--key-pass','env:CALMA_KEYSTORE_PASSWORD','--out',apk,build/'aligned.apk',env=env)
 run(a.build_tools/'apksigner','verify','--verbose','--print-certs',apk)
 run(a.build_tools/'zipalign','-c','-P','16','4',apk)
-manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Canales A/B y recordatorio opcional.'}
+# Validate the actual signed manifest before announcing a downloadable update.
+verify_apk(apk,a.build_tools,version,version_code)
+manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Corregida la instalación de actualizaciones.'}
 (ROOT/'android-update.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+'\n')
 (dist/'SHA256SUMS.txt').write_text(sha(apk)+'  '+apk.name+'\n')
 (dist/'build-info.json').write_text(json.dumps({'version':version,'base':lock,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'patchBundleSha256':sha(build/'patches.jar'),'extensionSha256':sha(build/'classes.dex'),'signedInAccountTested':False},indent=2)+'\n')

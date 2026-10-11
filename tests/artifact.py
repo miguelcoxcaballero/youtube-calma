@@ -1,9 +1,12 @@
 """Check provenance, preset, ABI preservation, native hooks and release metadata."""
-import hashlib,importlib.util,json,re,subprocess,zipfile
+import sys,hashlib,importlib.util,json,re,subprocess,zipfile
 from pathlib import Path
 R=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(R/'scripts'))
+from release_metadata import verify_apk
 m=json.loads((R/'android-update.json').read_text());apk=R/'build/dist'/('YouTube-Calma-'+m['version']+'.apk')
 assert hashlib.file_digest(apk.open('rb'),'sha256').hexdigest()==m['apkSha256']
+verify_apk(apk,R/'tools/android-15',m['version'],m['versionCode'])
 assert apk.stat().st_size==m['apkSizeBytes'] and m['required'] is True
 spec=importlib.util.spec_from_file_location('compiler',R/'scripts/compile-extension.py');compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
 with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as base:
