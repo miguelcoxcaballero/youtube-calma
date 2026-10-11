@@ -49,6 +49,9 @@ Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la cl
 
 ## Código y verificación
 
+La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nativas en Android 14, 15 y 16: apertura real de ajustes, versión instalada, persistencia de A/B y aplazamiento de 14 días. [Resultados de esta versión](validation/0.1.6.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38152226040).
+
+
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
 El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.6` y Android `versionCode=1557278151`.
