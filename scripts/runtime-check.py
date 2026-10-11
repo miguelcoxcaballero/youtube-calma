@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run the exact signed APK and its native instrumentation on official Android."""
 import argparse,hashlib,json,os,re,shutil,subprocess,time,urllib.request,traceback
+import xml.etree.ElementTree as ET
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser();p.add_argument('--api',type=int,required=True);a=p.parse_args()
@@ -61,6 +62,9 @@ try:
         snap=subprocess.run([str(SDK/'platform-tools/adb'),'-s','emulator-5554','exec-out','screencap','-p'],capture_output=True,timeout=30)
         (OUT/('night-'+mode+'.png')).write_bytes(snap.stdout)
         adb('shell','uiautomator','dump','/sdcard/ui.xml',timeout=30);adb('pull','/sdcard/ui.xml',OUT/('night-'+mode+'.xml'))
+        ui=OUT/('night-'+mode+'.xml')
+        if ui.exists():
+            report['ui-'+mode]=list(dict.fromkeys(node.get('text') or node.get('content-desc') for node in ET.parse(ui).iter('node') if node.get('text') or node.get('content-desc')))
     smoke=ROOT/'runtime-input/YouTube-Calma-Smoke.apk';assert sha(smoke)==transport['smokeSha256']
     required(adb('install','--no-incremental',smoke),'install-tests')
     result=required(adb('shell','am','instrument','-w','es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'native-tests')

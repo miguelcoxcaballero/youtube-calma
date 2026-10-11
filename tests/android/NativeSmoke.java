@@ -24,6 +24,14 @@ public final class NativeSmoke extends Instrumentation {
         Bundle result=new Bundle();
         try {
             Context context=getTargetContext();loader=context.getClassLoader();
+            // am instrument starts a fresh process without MainActivity. This
+            // base APK initializes the ReVanced context from that activity.
+            android.content.Intent launch=context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            check(launch!=null,"launcher available");
+            android.app.Activity activity=startActivitySync(launch);
+            waitForIdleSync();
+            check(activity!=null,"native activity initialized");
+            check(call("app.revanced.extension.shared.Utils","getContext",new Class[]{})!=null,"ReVanced context initialized by native activity");
             SharedPreferences prefs=context.getSharedPreferences("revanced_prefs",0);
             check(prefs.getBoolean("calma_preset_v1",false),"preset must load during Application.onCreate");
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
