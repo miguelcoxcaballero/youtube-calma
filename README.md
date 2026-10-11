@@ -2,7 +2,7 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
-[Descargar APK 0.1.7 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.7/YouTube-Calma-0.1.7.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.7)
+[Descargar APK 0.1.8 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.8/YouTube-Calma-0.1.8.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.8)
 
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
@@ -62,7 +62,7 @@ La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nat
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.7` y Android `versionCode=1557278152`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.8` y Android `versionCode=1557278153`.
 
 La 0.1.5 ha superado 181 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Incluyen los modelos nativos de Notificaciones, su posición, deduplicación y ruta al buzón; el clic real del logo hacia la web; iconos, ajustes, perfiles y apertura del instalador hasta su confirmación. [Resultados y alcance](validation/0.1.5.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38141579965). La confirmación de instalación se cancela en las pruebas.
 
@@ -82,3 +82,7 @@ python3 tests/updater.py
 ```
 
 La clave debe tener alias `calma`; establece `CALMA_KEYSTORE_PASSWORD` para una clave propia. Una clave distinta impide actualizar instalaciones anteriores. Las versiones publicadas conservan la clave existente.
+
+## Integrated update settings (0.1.8 · A)
+
+B is the default update channel. Untested development builds on A require acknowledgement and a completed slide. Settings use the app name with an understated Inhouse/GitHub footer. Updates remain optional. [Android 14–16 validation](validation/0.1.8.json).
