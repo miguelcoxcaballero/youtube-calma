@@ -1,0 +1,84 @@
+{
+  "version": "0.1.4",
+  "apkSha256": "030b07818b1fb82f5009e85afc63e74432c2e00a7f2d9d9a3f8cba52e8e1f62c",
+  "date": "2026-10-11",
+  "workflow": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38140278023",
+  "publicDownloadAndManifestsVerified": true,
+  "artifactTestsPassed": true,
+  "readPopupTestsPassed": true,
+  "released010CheckerRecoveryTestsPassed": true,
+  "originalPhotosInstallerRetained": true,
+  "android": [
+    {
+      "api": 34,
+      "apkSha256": "030b07818b1fb82f5009e85afc63e74432c2e00a7f2d9d9a3f8cba52e8e1f62c",
+      "signedInAccountTested": false,
+      "passed": true,
+      "profiles": [
+        "CALMA_PROFILE_OK disable checks=5\n\n",
+        "CALMA_PROFILE_OK restore checks=12\n\n"
+      ],
+      "nativeTests": "CALMA_INSTALLER_UI {\"texts\":[\"YouTube ReVanced\",\"Do you want to update this app?\",\"Cancel\",\"Update\"],\"packages\":[\"com.google.android.packageinstaller\"]}\nCALMA_NATIVE_TESTS_OK checks=171\n\n",
+      "installerUi": [
+        "YouTube ReVanced",
+        "Do you want to update this app?",
+        "Cancel",
+        "Update"
+      ],
+      "installerPackages": [
+        "com.google.android.packageinstaller"
+      ],
+      "installerHandoffPassed": true
+    },
+    {
+      "api": 35,
+      "apkSha256": "030b07818b1fb82f5009e85afc63e74432c2e00a7f2d9d9a3f8cba52e8e1f62c",
+      "signedInAccountTested": false,
+      "passed": true,
+      "profiles": [
+        "CALMA_PROFILE_OK disable checks=5\n\n",
+        "CALMA_PROFILE_OK restore checks=12\n\n"
+      ],
+      "nativeTests": "CALMA_INSTALLER_UI {\"texts\":[\"YouTube ReVanced\",\"Do you want to update this app?\",\"Cancel\",\"Update\"],\"packages\":[\"com.google.android.packageinstaller\"]}\nCALMA_NATIVE_TESTS_OK checks=171\n\n",
+      "installerUi": [
+        "YouTube ReVanced",
+        "Do you want to update this app?",
+        "Cancel",
+        "Update"
+      ],
+      "installerPackages": [
+        "com.google.android.packageinstaller"
+      ],
+      "installerHandoffPassed": true
+    },
+    {
+      "api": 36,
+      "apkSha256": "030b07818b1fb82f5009e85afc63e74432c2e00a7f2d9d9a3f8cba52e8e1f62c",
+      "signedInAccountTested": false,
+      "passed": true,
+      "profiles": [
+        "CALMA_PROFILE_OK disable checks=5\n\n",
+        "CALMA_PROFILE_OK restore checks=12\n\n"
+      ],
+      "nativeTests": "CALMA_INSTALLER_UI {\"texts\":[\"YouTube ReVanced\",\"Do you want to update this app?\",\"Cancel\",\"Update\"],\"packages\":[\"com.google.android.packageinstaller\"]}\nCALMA_NATIVE_TESTS_OK checks=171\n\n",
+      "installerUi": [
+        "YouTube ReVanced",
+        "Do you want to update this app?",
+        "Cancel",
+        "Update"
+      ],
+      "installerPackages": [
+        "com.google.android.packageinstaller"
+      ],
+      "installerHandoffPassed": true
+    }
+  ],
+  "scope": "Official Android 14–16 emulators, process persistence across master-switch cycles, actual native settings XML and activity/footer, original ReVanced defaults restored, active profile and statistics preserved, real installer confirmation. No signed-in account or physical device tested. Adaptive Inhouse launcher icon resolution and drawing; black interior asset and white-on-black popup branding.",
+  "brandingChecks": {
+    "adaptiveLauncherResourceResolved": true,
+    "androidDrawableInflationAndDrawing": true,
+    "interiorPngDecodesWithBlackBackground": true,
+    "popupWhiteOnBlackInLightAndDark": true,
+    "visualReference": "AI-generated source artwork and browser popup reviewed; Android icon drawing exercised without exporting a screenshot."
+  }
+}

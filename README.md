@@ -21,7 +21,7 @@ En los ajustes nativos, justo debajo de ReVanced, aparece **Inhouse YouTube sett
 
 Se guardan por separado las preferencias con Inhouse activado y desactivado. Al actualizar desde versiones que no guardaban la configuración anterior a Calma, la primera desactivación utiliza los valores originales del APK ReVanced proporcionado. No se cambian la cuenta, las estadísticas acumuladas ni la identidad de la aplicación.
 
-El pie muestra el [logo original de Inhouse Read](https://github.com/miguelcoxcaballero/inhouse-read/blob/main/public/icons/inhouse-read-logo.png), versión, fecha de publicación y enlace a este repositorio.
+El pie muestra una variante blanca sobre negro del [símbolo de Inhouse Read](https://github.com/miguelcoxcaballero/inhouse-read/blob/main/public/icons/inhouse-read-logo.png), versión, fecha de publicación y enlace a este repositorio.
 
 ## Actualizador corregido en 0.1.2
 
@@ -43,7 +43,7 @@ Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt)
 
 El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.4` y Android `versionCode=1557278149`.
 
-La 0.1.3 ha superado 167 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Se comprueban la entrada nativa bajo ReVanced, la actividad de ajustes y su pie, la restauración de preferencias y la apertura real del instalador desde `cache/updates/` hasta su confirmación. [Resultados y alcance](validation/0.1.3.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38139358568). La confirmación de instalación se cancela en las pruebas.
+La 0.1.4 ha superado 171 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Se comprueban la resolución y el dibujo del icono adaptativo, el logo interior negro, la entrada nativa bajo ReVanced, la actividad de ajustes y su pie, la restauración de preferencias y la apertura real del instalador desde `cache/updates/` hasta su confirmación. [Resultados y alcance](validation/0.1.4.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38140278023). La confirmación de instalación se cancela en las pruebas.
 
 También se comprueban integridad de la APK, preset, bibliotecas nativas, procedencia del instalador, popup/progreso y recuperación de actualizaciones. La instrumentación Android comprueba los valores cargados por ReVanced, callbacks de navegación, filtros y conservación de estadísticas. Las pruebas sin iniciar sesión no verifican las suscripciones de una cuenta real ni la reproducción autenticada.
 
