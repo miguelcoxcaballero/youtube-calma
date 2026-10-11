@@ -22,7 +22,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278149")
+            manifest.setAttribute("android:versionCode", "1557278150")
             val app = manifest.getElementsByTagName("application").item(0) as Element
             app.setAttribute("android:icon", "@mipmap/inhouse_launcher")
             app.setAttribute("android:roundIcon", "@mipmap/inhouse_launcher")
@@ -56,7 +56,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to authority, "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.4"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.5"))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {
@@ -149,6 +149,18 @@ val behaviorPatch = bytecodePatch(name = "YouTube Calma subscriptions and naviga
         }
         val result=home.implementation!!.instructions[hook.index+1] as OneRegisterInstruction
         home.replaceInstruction(hook.index,"invoke-static {v${result.registerA}}, $EXT->homeBrowseId(Ljava/lang/String;)Ljava/lang/String;")
+        // Bind a real notification model before the controller assigns pivot indices.
+        val pivots = method("Lpgu;", "O", listOf("Lafpw;"))
+        val parsed = pivots.implementation!!.instructions.withIndex().single { (_, ins) ->
+            val ref=(ins as? ReferenceInstruction)?.reference as? MethodReference
+            ref?.definingClass == "Lphb;" && ref.name == "h" && ref.returnType == "Larbh;"
+        }
+        val pivotResult=pivots.implementation!!.instructions[parsed.index+1] as OneRegisterInstruction
+        pivots.addInstructions(parsed.index+2,"""
+            invoke-static {v${pivotResult.registerA}}, Les/calma/youtube/nativeapp/NativeInbox;->tabs(Ljava/lang/Object;)Ljava/lang/Object;
+            move-result-object v${pivotResult.registerA}
+            check-cast v${pivotResult.registerA}, Larbh;
+        """.trimIndent())
         // This APK carries the navigation settings but omitted their callback.
         method("Lapp/revanced/extension/youtube/shared/NavigationBar;", "navigationTabCreatedCallback", listOf("Lapp/revanced/extension/youtube/shared/NavigationBar\$NavigationButton;","Landroid/view/View;")).addInstructions(0,
             "invoke-static {p0, p1}, Lapp/revanced/extension/youtube/patches/NavigationBarPatch;->navigationTabCreated(Lapp/revanced/extension/youtube/shared/NavigationBar\$NavigationButton;Landroid/view/View;)V")

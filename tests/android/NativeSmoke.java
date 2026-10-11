@@ -124,6 +124,49 @@ public final class NativeSmoke extends Instrumentation {
         if(view instanceof android.widget.TextView)texts.add(((android.widget.TextView)view).getText().toString());
         if(view instanceof android.view.ViewGroup)for(int i=0;i<((android.view.ViewGroup)view).getChildCount();i++)collectViews(((android.view.ViewGroup)view).getChildAt(i),texts);
     }
+    private Object inboxMessage(String name,Object... fields)throws Exception {
+        Method make=type("es.calma.youtube.nativeapp.NativeInbox").getDeclaredMethod("message",String.class,Object[].class);make.setAccessible(true);return make.invoke(null,name,fields);
+    }
+    private Object pivot(String id)throws Exception {
+        Object proto=inboxMessage("bbhx","b",1,"e",id);
+        Object wrapper=inboxMessage("bbic","b",117501096,"c",proto);
+        Object optional=type("antv").getMethod("a",type("bbic")).invoke(null,wrapper);
+        return optional.getClass().getMethod("get").invoke(optional);
+    }
+    private String pivotId(Object tab)throws Exception {
+        Object optional=tab.getClass().getField("d").get(tab);return (String)optional.getClass().getMethod("orElse",Object.class).invoke(optional,"");
+    }
+    private void inboxModels()throws Exception {
+        Object home=pivot("FEwhat_to_watch"),subscriptions=pivot("FEsubscriptions"),account=pivot("FElibrary");
+        List<Object> input=Arrays.asList(home,subscriptions,account);
+        List<?> result=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},input);
+        check(result.size()==4,"Missing notification pivot is inserted");
+        check(result.get(0)==home && result.get(1)==subscriptions && result.get(3)==account,"Original pivots preserved around native inbox");
+        Object notification=result.get(2);check("FEactivity".equals(pivotId(notification)),"Notifications directly between subscriptions and account");
+        Object model=notification.getClass().getField("a").get(notification);
+        Object endpoint=model.getClass().getField("g").get(model);
+        check("FEactivity".equals(type("aigv").getMethod("bk",type("avfw")).invoke(null,endpoint)),"Native command decoder resolves the real notification inbox");
+        Object text=model.getClass().getField("h").get(model);
+        check(type("amim").getMethod("b",type("awyk")).invoke(null,text).toString().length()>0,"Native formatted label renderer reads the notification title");
+        Object icon=model.getClass().getField("d").get(model);Object bell=type("axlk").getMethod("a",int.class).invoke(null,icon.getClass().getField("c").get(icon));
+        check("TAB_ACTIVITY_CAIRO".equals(((Enum<?>)bell).name()),"Original YouTube bell icon");
+        List<?> again=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},result);check(again==result,"Native inbox insertion is idempotent");
+        List<?> reordered=(List<?>)call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},Arrays.asList(notification,home,subscriptions,notification,account));
+        check(reordered.size()==4 && reordered.get(2)==notification,"Existing server inbox preserved, reordered and deduplicated");
+        call("es.calma.youtube.nativeapp.CalmaSwitch","setEnabled",new Class[]{boolean.class},false);
+        check(call("es.calma.youtube.nativeapp.NativeInbox","tabs",new Class[]{Object.class},input)==input,"Master off keeps original pivot list");
+        call("es.calma.youtube.nativeapp.CalmaSwitch","setEnabled",new Class[]{boolean.class},true);
+    }
+    private View findBrand(View view) {
+        if("Inhouse Software · Abrir web".contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;
+        if(view instanceof android.view.ViewGroup)for(int i=0;i<((android.view.ViewGroup)view).getChildCount();i++){View found=findBrand(((android.view.ViewGroup)view).getChildAt(i));if(found!=null)return found;}return null;
+    }
+    private void brandLink(android.app.Activity activity)throws Exception {
+        android.content.IntentFilter filter=new android.content.IntentFilter(android.content.Intent.ACTION_VIEW);filter.addDataScheme("https");filter.addDataAuthority("inhouse.miguelcoxcaballero.com",null);
+        android.app.Instrumentation.ActivityMonitor monitor=addMonitor(filter,new android.app.Instrumentation.ActivityResult(0,null),true);
+        final boolean[] clicked={false};runOnMainSync(()->{View brand=findBrand(activity.getWindow().getDecorView());if(brand!=null)clicked[0]=brand.performClick();});
+        check(clicked[0] && monitor.getHits()==1,"Settings logo opens Inhouse Software website");removeMonitor(monitor);
+    }
     private String brandingIcon(android.content.Context context) throws Exception {
         android.content.pm.PackageManager pm=context.getPackageManager();
         android.content.Intent launch=pm.getLaunchIntentForPackage(context.getPackageName());
@@ -155,6 +198,7 @@ public final class NativeSmoke extends Instrumentation {
             SharedPreferences prefs=context.getSharedPreferences("revanced_prefs",0);
             if(phase!=null) { profilePhase(context,prefs,result);return; }
             settingsEntry(context);
+            inboxModels();
                 result.putString("inhouseIconPng",brandingIcon(context));
             check(prefs.getBoolean("calma_preset_v1",false),"preset must load during Application.onCreate");
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
@@ -232,6 +276,7 @@ public final class NativeSmoke extends Instrumentation {
             call(bootstrap,"initialize",new Class[]{Context.class},context);check(prefs.getString(key,"").equals("4000"),"preserve accumulated stats");prefs.edit().putString(key,before).commit();
             check(Boolean.FALSE.equals(call("app.revanced.extension.shared.checks.Check","shouldRun",new Class[]{})),"Manager-only distribution warning disabled");
             android.app.Activity settingsActivity=startActivitySync(new android.content.Intent().setClassName(context.getPackageName(),"es.calma.youtube.nativeapp.CalmaSettingsActivity").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            brandLink(settingsActivity);
             waitForIdleSync();List<String> settingsTexts=new ArrayList<>();
             runOnMainSync(()->collectViews(settingsActivity.getWindow().getDecorView(),settingsTexts));
             check(settingsTexts.contains("Activar cambios") && settingsTexts.contains("Inhouse") && settingsTexts.contains("GitHub ↗"),"actual settings contain toggle and brand footer");

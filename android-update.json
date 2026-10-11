@@ -1,9 +1,9 @@
 {
-  "version": "0.1.4",
-  "versionCode": 1557278149,
+  "version": "0.1.5",
+  "versionCode": 1557278150,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.4/YouTube-Calma-0.1.4.apk",
-  "apkSha256": "030b07818b1fb82f5009e85afc63e74432c2e00a7f2d9d9a3f8cba52e8e1f62c",
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.5/YouTube-Calma-0.1.5.apk",
+  "apkSha256": "2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704",
   "apkSizeBytes": 183345795,
-  "releaseNotes": "Nuevo icono con el símbolo blanco de Inhouse. Logos interiores en blanco sobre negro, también en el actualizador."
+  "releaseNotes": "Notificaciones aparece entre Suscripciones y tu cuenta en la barra nativa. El logo de los ajustes abre Inhouse Software."
 }

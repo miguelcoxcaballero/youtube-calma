@@ -30,7 +30,7 @@ env=dict(os.environ);env.setdefault('CALMA_KEYSTORE_PASSWORD','localbuild')
 run(a.build_tools/'apksigner','sign','--ks',a.keystore,'--ks-key-alias','calma','--ks-pass','env:CALMA_KEYSTORE_PASSWORD','--key-pass','env:CALMA_KEYSTORE_PASSWORD','--out',apk,build/'aligned.apk',env=env)
 run(a.build_tools/'apksigner','verify','--verbose','--print-certs',apk)
 run(a.build_tools/'zipalign','-c','-P','16','4',apk)
-manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Nuevo icono con el símbolo blanco de Inhouse. Logos interiores en blanco sobre negro, también en el actualizador.'}
+manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Notificaciones aparece entre Suscripciones y tu cuenta en la barra nativa. El logo de los ajustes abre Inhouse Software.'}
 (ROOT/'android-update.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+'\n')
 (dist/'SHA256SUMS.txt').write_text(sha(apk)+'  '+apk.name+'\n')
 (dist/'build-info.json').write_text(json.dumps({'version':version,'base':lock,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'patchBundleSha256':sha(build/'patches.jar'),'extensionSha256':sha(build/'classes.dex'),'signedInAccountTested':False},indent=2)+'\n')

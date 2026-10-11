@@ -27,7 +27,11 @@ public final class InhouseUi {
         logo.setBackground(outline);logo.setClipToOutline(true);logo.setAlpha(1f);
         brand.addView(logo,new LinearLayout.LayoutParams(dp(activity,28),dp(activity,28)));
         TextView name=new TextView(activity);name.setText("Inhouse");name.setTextSize(14);name.setTextColor(muted);name.setTypeface(Typeface.create("sans-serif-medium",0));name.setPadding(dp(activity,8),0,0,0);
-        brand.addView(name);footer.addView(brand);
+        brand.addView(name);
+        brand.setMinimumHeight(dp(activity,48));brand.setPadding(dp(activity,12),0,dp(activity,12),0);
+        brand.setContentDescription("Inhouse Software · Abrir web");brand.setFocusable(true);
+        brand.setOnClickListener(view->activity.startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://inhouse.miguelcoxcaballero.com/"))));
+        footer.addView(brand);
         TextView version=new TextView(activity);version.setText("v"+CalmaBuild.VERSION+" · "+CalmaBuild.RELEASE_DATE);version.setTextColor(muted);version.setTextSize(12);version.setGravity(Gravity.CENTER);version.setPadding(0,dp(activity,10),0,0);footer.addView(version);
         TextView link=new TextView(activity);link.setText("GitHub ↗");link.setTextSize(13);link.setTextColor(muted);link.setGravity(Gravity.CENTER);link.setMinHeight(dp(activity,48));link.setMinWidth(dp(activity,96));link.setContentDescription("GitHub: "+github);link.setFocusable(true);
         link.setOnClickListener(view->activity.startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(github))));footer.addView(link);
