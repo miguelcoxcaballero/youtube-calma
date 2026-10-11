@@ -1,0 +1,13 @@
+<resources>
+    <style name="CalmaSettingsTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">#0095F6</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="CalmaUpdatePopupTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">#0095F6</item>
+    </style>
+</resources>

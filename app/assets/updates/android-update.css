@@ -1,0 +1,146 @@
+/* Aviso de actualización dentro del WebView de Android — ver android-update.js.
+   Bloqueante a propósito (igual que en inhouse notes): mientras hay una
+   versión más nueva disponible, no tiene sentido dejar usar una app que ya
+   sabemos que tiene un fix pendiente. */
+
+.android-update-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(24px, var(--ihr-safe-top)) 20px max(24px, env(safe-area-inset-bottom));
+  background: rgba(12, 11, 10, 0.78);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.android-update-card {
+  width: min(400px, 100%);
+  padding: 26px 24px 20px;
+  border-radius: 20px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .6), 0 0 0 1px var(--border);
+}
+
+.android-update-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.android-update-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--accent-read-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-read-border);
+  color: var(--accent-read);
+  flex: none;
+}
+[data-theme="dark"] .android-update-icon { color: #8fbf9e; }
+
+.android-update-eyebrow {
+  font: 600 10.5px/1.2 var(--f-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.android-update-title {
+  margin: 5px 0 0;
+  font: 600 19px/1.2 var(--f-logo);
+  letter-spacing: -.02em;
+  color: var(--text-primary);
+}
+
+.android-update-message {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: .92rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.android-update-progress {
+  margin-top: 18px;
+}
+
+.android-update-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.android-update-progress-row strong {
+  color: var(--text-primary);
+  font: 600 18px var(--f-body);
+  font-variant-numeric: tabular-nums;
+}
+
+.android-update-progressbar {
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+  overflow: hidden;
+}
+
+.android-update-progressfill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: var(--accent-read);
+  transition: width 0.18s var(--ease);
+}
+
+/* Misma jerarquía que el resto de la app: la acción principal va en tinta. */
+.android-update-install {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 12px;
+  background: var(--text-primary);
+  color: var(--bg-secondary);
+  font: 600 15px var(--f-body);
+  cursor: pointer;
+  transition: background-color 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease), transform 0.15s var(--ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.android-update-install:active:not(:disabled) { transform: scale(.98); }
+.android-update-install:focus-visible { outline: 2px solid var(--accent-read); outline-offset: 3px; }
+
+/* Mientras descarga, el botón espera en hueco (no una losa gris a medio
+   tono); se rellena de tinta en cuanto se puede instalar. */
+.android-update-install:disabled {
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  cursor: default;
+}
+
+.android-update-status {
+  min-height: 18px;
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .android-update-progressfill, .android-update-install { transition: none; }
+}

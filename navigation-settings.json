@@ -1,0 +1,12 @@
+{
+  "change_start_page": "subscriptions",
+  "change_start_page_always": true,
+  "hide_shorts_button": true,
+  "hide_create_button": true,
+  "hide_notifications_button": false,
+  "switch_create_with_notifications_button": true,
+  "hide_toolbar_create_button": true,
+  "hide_toolbar_notification_button": true,
+  "hide_community_posts": true,
+  "hide_latest_posts": true
+}

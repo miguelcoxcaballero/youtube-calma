@@ -1,0 +1,18 @@
+{
+  "morphe": {
+    "version": "1.18.1",
+    "url": "https://github.com/MorpheApp/morphe-desktop/releases/download/v1.18.1/morphe-desktop-1.18.1-all.jar",
+    "sha256": "1b506ab5f03d16a2f65026d5e0e1910d01fc1e2152f21eaeb44ed2f30856597b",
+    "role": "Generic APK and DEX tool; no third-party patches are included"
+  },
+  "jadx": {
+    "version": "1.5.6",
+    "url": "https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip",
+    "sha256": "545ea2be9c242511bc145755cf4bda2485ade42966e096f8b4d3da2a230e8974"
+  },
+  "apktool": {
+    "version": "3.0.3",
+    "url": "https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar",
+    "sha256": "dbf930b076c6b9be08d57c449cacefc3bdd6b71ebd59b3066fc0e1f5b14f9423"
+  }
+}

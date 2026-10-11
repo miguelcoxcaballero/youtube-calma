@@ -1,0 +1,27 @@
+name: Android checks
+on:
+  push:
+    branches: ['runtime-check-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 35, 36]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: sudo chmod 666 /dev/kvm
+      - run: python3 scripts/runtime-check.py --api '${{ matrix.api }}'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: android-${{ matrix.api }}
+          path: build/evidence/
+          retention-days: 7

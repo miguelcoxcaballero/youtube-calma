@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="es.calma.youtube.tests">
+  <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="35"/>
+  <application android:label="Calma tests"/>
+  <instrumentation android:name="es.calma.youtube.tests.NativeSmoke" android:targetPackage="app.revanced.android.youtube" android:functionalTest="true"/>
+</manifest>
