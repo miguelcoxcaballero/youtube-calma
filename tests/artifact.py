@@ -17,7 +17,7 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
     assert old<=classes,'Original classes lost'
     assert 'Les/calma/youtube/nativeapp/CalmaBootstrap;' in classes
     assert b'CalmaBuild' in strings and m['version'].encode() in strings
-    for n in ['updater.js','index.html','android-update.css']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
+    for n in ['updater.js','index.html','updater.css','host.js','host.css','config.json']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
     assert z.read('assets/calma-preferences.json')==(R/'resources/assets/calma-preferences.json').read_bytes()
     supplied=json.loads((R/'settings.json').read_text());supplied.update(json.loads((R/'navigation-settings.json').read_text()));preset=json.loads(z.read('assets/calma-preferences.json'))
     for k,v in supplied.items():
@@ -25,13 +25,13 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
         expected=v if isinstance(v,bool) else str(v)
         if k in {'custom_branding_icon','spoof_video_streams_client_type','change_start_page'}:expected=expected.upper()
         assert preset[stored]==expected,k
-photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'app/src/es/calma/youtube/PhotosUpdateInstaller.kt').read_text()
+photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'vendor/inhouse-services-updater/android/PhotosUpdateInstaller.kt').read_text()
 assert photos[photos.index('  private fun download('):photos.index('  private fun publishDownloadProgress(')] in adapted
 assert photos[photos.index('  private fun validateUrl('):] in adapted
 install=photos[photos.index('  private fun installUpdate('):photos.index('  private fun download(')].replace('private fun installUpdate(', 'fun installUpdate(').replace('MethodChannel.Result','Result')
 assert install in adapted
-assert (R/'vendor/inhouse-read/android-update.css').read_bytes()==(R/'app/assets/updates/android-update.css').read_bytes()
+subprocess.run(['python3',str(R/'vendor/inhouse-services-updater/verify.py'),str(R)],check=True)
 source=(R/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()
 assert re.search(r'VERSION = "([^"]+)"',source)[1]==m['version']
 assert int(re.search(r'VERSION_CODE = (\d+)',source)[1])==m['versionCode']
-print('PASS: exact preset, original native libraries/classes retained, updater assets, literal Photos installer, Read CSS, release hash/size/version')
+print('PASS: exact preset, original native libraries/classes retained, updater assets, literal Photos installer, shared popup, release hash/size/version')

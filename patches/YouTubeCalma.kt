@@ -66,7 +66,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
                 if (name.startsWith("$PKG.revanced_")) alias.setAttribute("android:enabled", (name == "$PKG.revanced_original_1").toString())
             }
         }
-        for (path in listOf("assets/inhouse-logo.png", "res/drawable-nodpi/inhouse_launcher_art.png", "res/drawable/inhouse_launcher_foreground.xml", "res/drawable/inhouse_launcher_background.xml", "res/mipmap-anydpi/inhouse_launcher.xml", "res/mipmap-anydpi-v26/inhouse_launcher.xml", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/android-update.css", "res/xml/calma_update_file_paths.xml")) {
+        for (path in listOf("assets/inhouse-logo.png", "res/drawable-nodpi/inhouse_launcher_art.png", "res/drawable/inhouse_launcher_foreground.xml", "res/drawable/inhouse_launcher_background.xml", "res/mipmap-anydpi/inhouse_launcher.xml", "res/mipmap-anydpi-v26/inhouse_launcher.xml", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/updater.css", "assets/updates/host.css", "assets/updates/host.js", "assets/updates/config.json", "res/xml/calma_update_file_paths.xml")) {
             val target=get(path);target.parentFile.mkdirs()
             Resources::class.java.getResourceAsStream("/calma-res/$path")!!.use { input -> target.outputStream().use { input.copyTo(it) } }
         }

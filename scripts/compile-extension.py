@@ -85,21 +85,18 @@ def main() -> None:
         generated = work / 'updater'
         generated.mkdir()
         app_source = ROOT / 'app/src/es/calma/youtube'
-        update_source = app_source / 'UpdateActivity.java'
-        adapted = update_source.read_text()
-        original_getter = re.compile(r'@JavascriptInterface public String getAppVersion\(\)\{try\{return getPackageManager\(\)\.getPackageInfo\(getPackageName\(\),0\)\.versionName;\}catch\(Exception e\)\{return "[^"]+";\}\}')
-        adapted, getter_count = original_getter.subn('@JavascriptInterface public String getAppVersion(){return es.calma.youtube.nativeapp.CalmaBuild.VERSION;}', adapted)
-        adapted, ua_count = re.subn(r'" InhouseReadApp/[^"]+"', '" InhouseReadApp/"+es.calma.youtube.nativeapp.CalmaBuild.VERSION', adapted)
-        if getter_count != 1 or ua_count != 1:
-            raise SystemExit('UpdateActivity host adapter no longer matches; review upstream before compiling')
-        (generated / 'UpdateActivity.java').write_text(adapted)
-        for name in ['UpdateAssetClient.java', 'PhotosUpdateInstaller.kt']:
-            shutil.copyfile(app_source / name, generated / name)
+        # Shared updater source is locked; edits belong in inhouse-services-updater.
+        run('python3', ROOT / 'vendor/inhouse-services-updater/verify.py', ROOT)
+        shared = ROOT / 'vendor/inhouse-services-updater/android'
+        for file in shared.iterdir():
+            if file.suffix in ('.java','.kt'): shutil.copyfile(file, generated / file.name)
+        alias = work / 'alias'; alias.mkdir()
+        shutil.copyfile(app_source / 'UpdateActivity.java', alias / 'UpdateActivity.java')
         kotlin_cp = ':'.join(map(str, [args.android_jar, ROOT / 'tools/androidx-core.jar', ROOT / 'tools/kotlin/stdlib.jar', ROOT / 'tools/kotlin/annotations.jar']))
         run('java', '-cp', ROOT / 'tools/kotlin/*', 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
             '-no-stdlib', '-no-reflect', '-jvm-target', '1.8', '-classpath', kotlin_cp,
             '-d', classes, generated / 'PhotosUpdateInstaller.kt')
-        java_sources = sources + sorted(generated.glob('*.java'))
+        java_sources = sources + sorted(generated.glob('*.java')) + sorted(alias.glob('*.java'))
         run('java', '-jar', ROOT / 'tools/ecj.jar', '-source', '1.8', '-target', '1.8', '-proc:none',
             '-classpath', kotlin_cp + ':' + str(classes), '-d', classes, *java_sources)
         own_jar = work / 'own.jar'
@@ -130,7 +127,7 @@ def main() -> None:
             raise SystemExit('Original FileProvider manifest metadata key was not preserved')
         if 'Les/calma/vendor/androidx/core/content/FileProvider;' not in own_classes:
             raise SystemExit('Isolated AndroidX FileProvider is missing')
-        unexpected = sorted(name for name in own_classes if not name.startswith('Les/calma/'))
+        unexpected = sorted(name for name in own_classes if not name.startswith(('Les/calma/', 'Lcom/inhouse/services/updater/')))
         if unexpected:
             raise SystemExit('Unisolated extension classes: ' + ', '.join(unexpected[:20]))
         stock_classes = set()
@@ -154,10 +151,10 @@ def main() -> None:
             'classCollisions': collisions,
             'unisolatedRuntimeReferences': unisolated_references,
             'fileProviderMetadataPreserved': True,
-            'updaterSources': {name: sha(app_source / name) for name in ['UpdateActivity.java', 'UpdateAssetClient.java', 'PhotosUpdateInstaller.kt']},
-            'hostAdaptations': ['CalmaBuild.VERSION for getAppVersion and user agent'],
+            'updaterSources': {path.name: sha(path) for path in shared.iterdir() if path.is_file()},
+            'hostAdaptations': ['App identity/version supplied by local updates/config.json; lifecycle and Activity aliases only'],
             'runtimeRelocation': {'kotlin': 'es.calma.vendor.kotlin', 'androidx': 'es.calma.vendor.androidx', 'android.support': 'es.calma.vendor.support', 'org.jetbrains.annotations': 'es.calma.vendor.annotations', 'org.intellij.lang.annotations': 'es.calma.vendor.intellij.annotations'},
-            'photosInstallerSourceUnchanged': (app_source / 'PhotosUpdateInstaller.kt').read_bytes() == (generated / 'PhotosUpdateInstaller.kt').read_bytes(),
+            'photosInstallerSourceUnchanged': (shared / 'PhotosUpdateInstaller.kt').read_bytes() == (generated / 'PhotosUpdateInstaller.kt').read_bytes(),
         }
         (build / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
         print(json.dumps(report, indent=2))

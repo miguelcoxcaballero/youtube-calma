@@ -1,4 +1,4 @@
-package es.calma.youtube
+package com.inhouse.services.updater
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -16,7 +16,10 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicBoolean
 
-// Original download/install/verification from Inhouse Photos; Flutter host adapted only.
+// Inhouse services updater: canonical source in miguelcoxcaballero/inhouse-services-updater.
+// Change updater code there first, then sync ALL five apps at the same revision.
+// New releases ALWAYS use A with a tiny changelog; B requires the user's explicit request.
+// Derived from Inhouse Photos: download, integrity, package, version and signer checks retained.
 class PhotosUpdateInstaller(private val activity: Activity, private val listener: Listener) {
   interface Listener { fun progress(downloadedBytes: Long, totalBytes: Long); fun stage(value: String) }
   interface Result { fun success(value: String); fun error(code: String, message: String?, details: Any?) }

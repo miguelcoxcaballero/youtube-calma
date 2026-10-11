@@ -1,0 +1,7 @@
+{
+  "appId": "youtube",
+  "appName": "Inhouse YouTube",
+  "repository": "miguelcoxcaballero/youtube-calma",
+  "installedVersion": "0.1.6",
+  "activityClass": "es.calma.youtube.UpdateActivity"
+}

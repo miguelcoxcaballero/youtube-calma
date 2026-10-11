@@ -1,343 +1,217 @@
-/**
- * Start-up work that is not needed to show the shelf waits here: it runs in
- * idle slices once the live shelf has presented a frame (or after a hard
- * deadline), so the first frame never shares the main thread or the network
- * with the offline-shell download, optional chunks or update checks.
+/* Inhouse services updater — canonical source: github.com/miguelcoxcaballero/inhouse-services-updater.
+ * Edit here, sync the SAME revision into YouTube, Instagram, Notes, Photos and Read.
+ * Every new release goes to A with a tiny changelog. Publish B ONLY on the user's explicit request.
+ * Updates are optional. Later defers automatic prompts for 14 days; settings always allow a manual check.
  */
-const SHELF_SELECTOR = '[data-inhouse-update-screen]'
-const FIRST_FRAME_DEADLINE_MS = 8000
-
-let presented = null
-let presentedDocument = null
-/** Resolves once the shelf canvas has drawn, or after the deadline (e.g. no WebGL). */
-function shelfPresented() {
-  const ownerDocument = globalThis.document
-  if (!ownerDocument) return Promise.resolve(false)
-  if (presentedDocument !== ownerDocument) { presented = null; presentedDocument = ownerDocument }
-  return presented ||= new Promise(resolve => {
-    const started = performance.now()
-    const check = () => {
-      // A discarded document cannot present a frame or own startup tasks.
-      if (globalThis.document !== ownerDocument) return resolve(false)
-      const canvas = ownerDocument.querySelector(SHELF_SELECTOR)
-      if (Number(canvas?.dataset.renderCount) > 0 || performance.now() - started > FIRST_FRAME_DEADLINE_MS) return resolve(true)
-      setTimeout(check, 100)
+(function (root) {
+  'use strict';
+  const VERSION = '1.0.0', TWO_WEEKS = 14 * 86400000;
+  const compareVersions = (a, b) => {
+    const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); }
+    return 0;
+  };
+  function validateCatalog(value, channel, config) {
+    if (!value || value.schemaVersion !== 1 || value.channel !== channel || !Array.isArray(value.releases)) throw Error('Catálogo no válido.');
+    function release(item) {
+      if (!item || !/^\d+\.\d+\.\d+$/.test(item.version) || !Number.isSafeInteger(item.versionCode) || item.versionCode < 1) throw Error('Versión no válida.');
+      const url = new URL(item.apkUrl);
+      if (url.protocol !== 'https:' || url.hostname !== 'github.com' || !url.pathname.startsWith('/' + config.repository + '/releases/download/') || !url.pathname.endsWith('.apk') || url.username || url.password) throw Error('Descarga no válida.');
+      if (!/^[a-f0-9]{64}$/i.test(item.apkSha256) || !Number.isSafeInteger(item.apkSizeBytes) || item.apkSizeBytes < 1) throw Error('Integridad de descarga no válida.');
+      if (typeof item.changelog !== 'string' || !item.changelog.trim() || item.changelog.length > 120) throw Error('El cambio debe ser breve.');
+      return { ...item, apkUrl: url.href, channel };
     }
-    check()
-  })
-}
-
-function idleSlice({ timeout = 2000 } = {}) {
-  return new Promise(resolve => {
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout })
-    else setTimeout(resolve, 50)
-  })
-}
-
-/** Runs the tasks one per idle slice after the first live frame; a failing task never stops the rest. */
-async function runAfterFirstFrame(tasks) {
-  const ownerDocument = globalThis.document
-  if (!await shelfPresented()) return
-  for (const task of tasks) {
-    await idleSlice()
-    if (globalThis.document !== ownerDocument) return
-    try { await task() } catch (error) { console.warn('Carga diferida omitida:', error) }
+    const releases = value.releases.map(release).sort((a, b) => b.versionCode - a.versionCode);
+    if (new Set(releases.map(r => r.versionCode)).size !== releases.length) throw Error('Versiones duplicadas.');
+    const latest = value.latest == null ? null : release(value.latest);
+    if (latest && (!releases.length || latest.versionCode !== releases[0].versionCode || latest.apkSha256 !== releases[0].apkSha256)) throw Error('Catálogo incoherente.');
+    if (!latest && releases.length) throw Error('Falta la última versión.');
+    return { ...value, latest, releases };
   }
-}
-
-// Auto-actualización dentro de la app Android — mismo mecanismo que inhouse
-// notes (ver checkForRequiredAndroidUpdate en su app-v5.js, revisado antes de
-// escribir esto, no reinventado): la app, solo cuando corre dentro del
-// WebView nativo, consulta un manifiesto JSON estático (android-update.json,
-// publicado junto al resto del sitio) y si hay una versión más nueva que la
-// instalada, ofrece descargarla e instalarla sin salir de la app, delegando
-// la descarga/instalación real en el puente nativo (`window.InhouseNative`,
-// ver android/html_to_apk_builder.py::patch_webview_bridge).
-//
-// Esto SOLO hace algo dentro del WebView empaquetado: en el navegador normal
-// o la PWA, `detectInhouseApp()` da false y el resto del módulo no hace nada.
-
-
-
-const UPDATE_MANIFEST_PATH = 'https://raw.githubusercontent.com/miguelcoxcaballero/youtube-calma/main/android-update.json'
-const INHOUSE_APP_STORAGE_KEY = 'inhouseReadAppMode'
-const LEGACY_ANDROID_APP_VERSION = '1.0.0'
-const CHECK_INTERVAL_MS = 15 * 60 * 1000
-const LATEST_RELEASE_URL = 'https://api.github.com/repos/miguelcoxcaballero/youtube-calma/releases/latest'
-const ALLOWED_APK_HOSTS = ['github.com', 'raw.githubusercontent.com', 'miguelcoxcaballero.github.io']
-
-// ---- Detección de "corriendo dentro de la app Android" ----
-// Tres señales, en este orden: ?inhouse_app=1 en la URL (la pone
-// .github/android/app-loader.html al redirigir), el user-agent que fija
-// MainActivity ("InhouseReadApp/X.Y.Z"), o quedar recordado en localStorage
-// de una detección anterior (para que sobreviva a navegaciones internas que
-// no repitan el query param).
-function detectInhouseApp() {
-  if (typeof window === 'undefined') return false
-  const params = new URLSearchParams(window.location.search)
-  const explicitFlag = params.get('inhouse_app') || params.get('app')
-  const userAgent = navigator.userAgent || ''
-  const fromAppUserAgent = /\bInhouseReadApp\/\d+(?:\.\d+)?\b/i.test(userAgent)
-
-  if (explicitFlag === '0' || explicitFlag === 'false') {
-    try { localStorage.removeItem(INHOUSE_APP_STORAGE_KEY) } catch { /* almacenamiento no disponible */ }
-    return false
+  function newer(release, installed, code) {
+    if (!release) return false;
+    const comparison = compareVersions(release.version, installed);
+    return comparison >= 0 && (code > 0 ? release.versionCode > code : comparison > 0);
   }
-  if (explicitFlag === '1' || explicitFlag === 'true' || fromAppUserAgent) {
-    try { localStorage.setItem(INHOUSE_APP_STORAGE_KEY, '1') } catch { /* almacenamiento no disponible */ }
-    return true
-  }
-  try {
-    return localStorage.getItem(INHOUSE_APP_STORAGE_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-/** Compara "1.2.3" contra "1.10.0" numéricamente (no como texto). */
-function compareSemanticVersions(left, right) {
-  const parse = value => String(value || '').split('.').map(part => Number.parseInt(part, 10) || 0)
-  const a = parse(left)
-  const b = parse(right)
-  const length = Math.max(a.length, b.length)
-  for (let i = 0; i < length; i++) {
-    const diff = (a[i] || 0) - (b[i] || 0)
-    if (diff !== 0) return diff
-  }
-  return 0
-}
-
-function getInstalledAndroidAppVersion() {
-  if (globalThis.InhouseNative && typeof globalThis.InhouseNative.getAppVersion === 'function') {
-    try {
-      const nativeVersion = String(globalThis.InhouseNative.getAppVersion() || '').trim()
-      if (/^\d+\.\d+\.\d+$/.test(nativeVersion)) return nativeVersion
-    } catch { /* el bridge nativo puede no estar listo aún */ }
-  }
-  const match = String(navigator.userAgent || '').match(/\bInhouseReadApp\/(\d+(?:\.\d+){1,2})\b/i)
-  if (match) return match[1]
-  return LEGACY_ANDROID_APP_VERSION
-}
-
-/** Valida el manifiesto antes de confiar en él: formato de versión y host del APK. */
-function validateManifest(manifest) {
-  if (!manifest || typeof manifest !== 'object') throw new Error('Manifiesto de actualización vacío')
-  if (!/^\d+\.\d+\.\d+$/.test(String(manifest.version || ''))) {
-    throw new Error('Versión de actualización inválida')
-  }
-  const apkUrl = new URL(String(manifest.apkUrl || ''), window.location.origin)
-  if (apkUrl.protocol !== 'https:' || !ALLOWED_APK_HOSTS.includes(apkUrl.hostname)) {
-    throw new Error(`Origen de descarga no permitido: ${apkUrl.hostname}`)
-  }
-  return { ...manifest, apkUrl: apkUrl.toString() }
-}
-
-/** ¿Hace falta actualizar? `required !== false` (por defecto sí, como en Notes) + versión más nueva. */
-function shouldOfferUpdate(manifest, installedVersion) {
-  return manifest.required !== false && compareSemanticVersions(manifest.version, installedVersion) > 0
-}
-
-/** Recuperación cuando el Release ya existe pero GitHub Pages aún sirve un manifiesto antiguo. */
-function manifestFromLatestRelease(release) {
-  const version = /^v(\d+\.\d+\.\d+)$/.exec(release?.tag_name || '')?.[1]
-  if (!version) throw new Error('El último release no es una versión Android.')
-  const filename = `YouTube-Calma-${version}.apk`
-  const asset = release.assets?.find(item => item.name === filename)
-  const expectedUrl = `https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v${version}/${filename}`
-  if (!asset || asset.browser_download_url !== expectedUrl || !/^sha256:[a-f0-9]{64}$/i.test(asset.digest || '')) {
-    throw new Error('El último APK no tiene una firma SHA-256 verificable.')
-  }
-  return validateManifest({
-    version, versionCode: 0, required: true,
-    apkUrl: expectedUrl, apkSha256: asset.digest.slice(7).toLowerCase(),
-    apkSizeBytes: asset.size,
-    releaseNotes: release.name || ''
-  })
-}
-
-// ---- UI del aviso de actualización ----
-
-function formatMegabytes(bytes) {
-  const value = Math.max(0, Number(bytes) || 0) / (1024 * 1024)
-  if (value === 0) return '0 MB'
-  return `${value < 10 ? value.toFixed(2) : value.toFixed(1)} MB`
-}
-
-function buildGate() {
-  const gate = document.createElement('div')
-  gate.id = 'android-update-gate'
-  gate.className = 'android-update-gate'
-  gate.setAttribute('role', 'dialog')
-  gate.setAttribute('aria-modal', 'true')
-  gate.setAttribute('aria-label', 'Actualización disponible')
-  gate.innerHTML = `
-    <div class="android-update-card">
-      <div class="android-update-head">
-        <span class="android-update-icon">
-          <svg viewBox="0 0 40 24" width="26" height="16" fill="none" aria-hidden="true">
-            <path d="M4 22 L20 6 L36 22" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <div>
-          <div class="android-update-eyebrow">YouTube Calma</div>
-          <h2 class="android-update-title">Actualización disponible</h2>
-        </div>
-      </div>
-      <p class="android-update-message" data-update-message></p>
-      <div class="android-update-progress" data-update-progress hidden aria-live="polite">
-        <div class="android-update-progress-row">
-          <strong data-update-percent>0%</strong>
-          <span data-update-bytes>0 MB</span>
-        </div>
-        <div class="android-update-progressbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-update-progressbar>
-          <div class="android-update-progressfill" data-update-progressfill></div>
-        </div>
-      </div>
-      <button type="button" class="android-update-install" data-update-install>Instalar</button>
-      <p class="android-update-status" data-update-status aria-live="polite"></p>
-    </div>`
-  document.body.append(gate)
-  return gate
-}
-
-function renderProgress(gate, payload = {}) {
-  const progress = gate.querySelector('[data-update-progress]')
-  const percentEl = gate.querySelector('[data-update-percent]')
-  const bytesEl = gate.querySelector('[data-update-bytes]')
-  const bar = gate.querySelector('[data-update-progressbar]')
-  const fill = gate.querySelector('[data-update-progressfill]')
-  const downloaded = Math.max(0, Number(payload.downloadedBytes) || 0)
-  const total = Math.max(0, Number(payload.totalBytes) || Number(gate.dataset.updateTotalBytes) || 0)
-  const calculated = total > 0 ? (downloaded / total) * 100 : 0
-  const percent = Math.max(0, Math.min(100, Math.round(
-    Number.isFinite(Number(payload.percent)) ? Number(payload.percent) : calculated
-  )))
-  if (total > 0) gate.dataset.updateTotalBytes = String(total)
-  progress.hidden = false
-  percentEl.textContent = `${percent}%`
-  bytesEl.textContent = total > 0
-    ? `${formatMegabytes(downloaded)} / ${formatMegabytes(total)}`
-    : `${formatMegabytes(downloaded)} descargados`
-  fill.style.width = `${percent}%`
-  bar.setAttribute('aria-valuenow', String(percent))
-}
-
-function getGate() {
-  return document.getElementById('android-update-gate')
-}
-
-/** Expuesto globalmente: el puente nativo llama a esto vía evaluateJavascript(). */
-function handleInhouseUpdateResult(payload) {
-  let result = payload
-  if (typeof result === 'string') {
-    try { result = JSON.parse(result) } catch { result = null }
-  }
-  const gate = getGate()
-  if (!gate || !result) return
-  const install = gate.querySelector('[data-update-install]')
-  const status = gate.querySelector('[data-update-status]')
-
-  if (result.status === 'permission_required') {
-    status.textContent = 'Activa "Permitir desde esta fuente" y vuelve a pulsar Instalar.'
-    install.textContent = 'Instalar'
-    install.disabled = false
-  } else if (result.status === 'downloading') {
-    renderProgress(gate, result)
-    status.textContent = 'Descargando…'
-    install.disabled = true
-  } else if (result.status === 'ready') {
-    renderProgress(gate, { ...result, percent: 100 })
-    status.textContent = 'Confirma la instalación en Android.'
-    install.disabled = true
-  } else if (result.status === 'error') {
-    status.textContent = result.message || 'No se pudo descargar. Reintenta.'
-    install.textContent = 'Reintentar'
-    install.disabled = false
-  }
-}
-
-function showUpdateGate(manifest, installedVersion) {
-  window.__inhouseAvailableUpdate = manifest
-  const gate = getGate() ?? buildGate()
-  gate.dataset.updateTotalBytes = String(Math.max(0, Number(manifest.apkSizeBytes) || 0))
-  gate.querySelector('[data-update-message]').textContent =
-    `Versión ${installedVersion}. Instala la ${manifest.version} para continuar.`
-
-  const install = gate.querySelector('[data-update-install]')
-  const status = gate.querySelector('[data-update-status]')
-  install.onclick = () => {
-    status.textContent = 'Preparando…'
-    install.disabled = true
-    renderProgress(gate, { downloadedBytes: 0, totalBytes: Number(manifest.apkSizeBytes) || 0, percent: 0 })
-    try {
-      if (globalThis.InhouseNative && typeof globalThis.InhouseNative.installAppUpdate === 'function') {
-        globalThis.InhouseNative.installAppUpdate(manifest.apkUrl, manifest.apkSha256 ?? '')
-      } else {
-        window.location.assign(manifest.apkUrl)
-      }
-    } catch {
-      status.textContent = 'No se pudo iniciar la descarga. Reintenta.'
-      install.disabled = false
+  function create(config) {
+    const win = config.window || root, doc = win.document, native = () => win.InhouseNative;
+    const key = 'inhouse-services-updater:' + config.appId;
+    let state = { channel: 'A', snooze: {} }, dialog = null, available = null, checking = null, generation = 0;
+    let lastPrompt = '', timer = null, started = false, installing = false, previousFocus = null;
+    const now = () => config.now ? config.now() : Date.now();
+    const installed = () => String(config.getVersion?.() || native()?.getAppVersion?.() || config.installedVersion || '0.0.0');
+    const installedCode = () => Number(config.getVersionCode?.() || native()?.getAppVersionCode?.() || config.installedVersionCode || 0);
+    function readState() {
+      try {
+        const raw = native()?.getUpdateState ? native().getUpdateState() : win.localStorage.getItem(key);
+        const value = raw ? JSON.parse(raw) : {};
+        state = { channel: value.channel === 'B' ? 'B' : 'A', snooze: value.snooze && typeof value.snooze === 'object' ? value.snooze : {} };
+      } catch (_) { /* Memory state still permits manual updating when storage is unavailable. */ }
+      return state;
     }
-  }
-}
-
-let checkPromise = null
-
-async function fetchFreshJson(url) {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 12000)
-  try {
-    const response = await fetch(url, { cache: 'no-store', signal: controller.signal })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    return await response.json()
-  } finally { clearTimeout(timeoutId) }
-}
-
-async function checkForUpdate() {
-  if (checkPromise) return checkPromise
-  checkPromise = (async () => {
-    window.__inhouseUpdateCheckVerified = false
-    const installedVersion = getInstalledAndroidAppVersion()
-    try {
-      const url = new URL(UPDATE_MANIFEST_PATH, window.location.href)
-      url.searchParams.set('check', String(Date.now()))
-      const manifest = validateManifest(await fetchFreshJson(url))
-      window.__inhouseUpdateCheckVerified = true
-      if (shouldOfferUpdate(manifest, installedVersion)) {
-        showUpdateGate(manifest, installedVersion)
-        return true
-      }
-    } catch (err) {
-      console.warn('Manifiesto de actualización no disponible:', err)
+    function saveState() {
+      const json = JSON.stringify(state);
+      if (native()?.saveUpdateState) native().saveUpdateState(json);
+      try { win.localStorage.setItem(key, json); } catch (_) { /* Native persistence is authoritative in APK hosts. */ }
     }
-    try {
-      const manifest = manifestFromLatestRelease(await fetchFreshJson(LATEST_RELEASE_URL))
-      window.__inhouseUpdateCheckVerified = true
-      if (shouldOfferUpdate(manifest, installedVersion)) {
-        showUpdateGate(manifest, installedVersion)
-        return true
+    function snoozed() { readState(); return Number(state.snooze[state.channel] || 0) > now(); }
+    async function freshJson(url) {
+      const controller = new AbortController(), timeout = win.setTimeout(() => controller.abort(), 12000);
+      try {
+        const request = new URL(url); request.searchParams.set('check', String(now()));
+        const response = await (config.fetch || win.fetch.bind(win))(request.href, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw Error('HTTP ' + response.status);
+        return await response.json();
+      } finally { win.clearTimeout(timeout); }
+    }
+    async function catalog(channel) {
+      const path = 'updates/' + channel + '.json';
+      let first;
+      try {
+        first = validateCatalog(await freshJson('https://raw.githubusercontent.com/' + config.repository + '/main/' + path), channel, config);
+        if (newer(first.latest, installed(), installedCode())) return first;
+      } catch (_) { /* A release can precede raw content propagation. Recover within the same channel only. */ }
+      try {
+        const result = await freshJson('https://api.github.com/repos/' + config.repository + '/contents/' + path + '?ref=main');
+        const recovered = validateCatalog(JSON.parse(win.atob(result.content.replace(/\s/g, ''))), channel, config);
+        if (!first || (recovered.latest?.versionCode || 0) >= (first.latest?.versionCode || 0)) return recovered;
+      } catch (error) { if (!first) throw error; }
+      return first;
+    }
+    function close(defer = false) {
+      if (defer) { readState(); state.snooze[state.channel] = now() + TWO_WEEKS; saveState(); lastPrompt = ""; }
+      if (dialog) { dialog.remove(); dialog = null; previousFocus?.focus?.(); }
+      if (config.close) config.close();
+    }
+    function shell(title) {
+      if (!dialog) {
+        previousFocus = doc.activeElement;
+        dialog = doc.createElement('div'); dialog.id = 'inhouse-services-update'; dialog.className = 'isu-overlay';
+        dialog.setAttribute('role', 'dialog'); dialog.setAttribute('aria-modal', 'true'); dialog.setAttribute('aria-labelledby', 'isu-title');
+        dialog.innerHTML = '<section class="isu-card"><header><span class="isu-logo" aria-hidden="true"><svg viewBox="0 0 40 24"><path d="M4 22L20 6L36 22"/></svg></span><div><small>Inhouse services updater</small><h2 id="isu-title"></h2></div></header><div data-isu-body></div><p class="isu-status" data-isu-status role="status"></p></section>';
+        dialog.addEventListener('keydown', event => {
+          if (event.key === 'Escape' && !installing) { event.preventDefault(); close(!!available); }
+          if (event.key === 'Tab') {
+            const buttons = [...dialog.querySelectorAll('button:not(:disabled),[tabindex="0"]')];
+            const first = buttons[0], last = buttons[buttons.length - 1];
+            if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first?.focus(); }
+          }
+        });
+        doc.body.append(dialog);
       }
-    } catch (err) { console.warn('Release Android no disponible:', err) }
-    return false
-  })().finally(() => { checkPromise = null })
-  return checkPromise
-}
-
-/** Usado al pulsar Conectar en un APK antiguo: ofrece una descarga real o explica que aún no existe. */
-function offerAvailableAndroidUpdate() {
-  return detectInhouseApp() ? checkForUpdate() : Promise.resolve(false)
-}
-
-/** Punto de entrada único, llamado desde app.js al arrancar. No-op fuera de la app nativa. */
-function initAndroidUpdateChecks() {
-  if (!detectInhouseApp()) return
-  document.documentElement.dataset.inhouseApp = 'true'
-  globalThis.handleInhouseUpdateResult = handleInhouseUpdateResult
-  // The two manifest requests wait for the first live shelf frame.
-  checkForUpdate()
-  window.addEventListener('focus', checkForUpdate)
-  setInterval(checkForUpdate, CHECK_INTERVAL_MS)
-}
-
-window.InhouseUpdater={initAndroidUpdateChecks,offerAvailableAndroidUpdate,compareSemanticVersions,validateManifest,shouldOfferUpdate,handleInhouseUpdateResult,showUpdateGate,getInstalledAndroidAppVersion};
+      dialog.querySelector('h2').textContent = title;
+      const body = dialog.querySelector('[data-isu-body]'); body.replaceChildren(); status('');
+      return body;
+    }
+    function el(tag, text, className) { const value = doc.createElement(tag); if (text != null) value.textContent = text; if (className) value.className = className; return value; }
+    function button(parent, text, action, className = 'isu-secondary') {
+      const value = el('button', text, className); value.type = 'button'; value.onclick = action; parent.append(value); return value;
+    }
+    function status(text) { if (dialog) dialog.querySelector('[data-isu-status]').textContent = text; }
+    function settings(message = '') {
+      readState(); const body = shell('Actualizaciones');
+      body.append(el('p', config.appName + ' · ' + installed(), 'isu-app'));
+      body.append(el('p', 'A: cambios recientes. B: versiones revisadas.', 'isu-caption'));
+      const options = el('div', null, 'isu-channels'); options.setAttribute('role', 'group'); options.setAttribute('aria-label', 'Canal de actualizaciones'); body.append(options);
+      ['A', 'B'].forEach(channel => {
+        const value = button(options, 'Versión ' + channel, () => {
+          if (installing) return;
+          readState(); state.channel = channel; saveState(); generation++; checking = null; available = null; lastPrompt = '';
+          settings('Canal ' + channel + ' seleccionado.'); check({ manual: true });
+        });
+        value.setAttribute('aria-pressed', String(state.channel === channel));
+      });
+      button(body, 'Buscar actualizaciones', () => check({ manual: true }), 'isu-primary');
+      button(body, 'Volver', () => close(false), 'isu-text');
+      status(message); options.querySelector('button[aria-pressed="true"]').focus();
+    }
+    function progress(payload) {
+      if (!dialog) return;
+      const progress = dialog.querySelector('[data-isu-progress]'); if (!progress) return;
+      const total = Number(payload.totalBytes || available?.latest.apkSizeBytes || 0), downloaded = Math.max(0, Number(payload.downloadedBytes) || 0);
+      const percent = Math.max(0, Math.min(100, payload.percent >= 0 ? Math.round(payload.percent) : total > 0 ? Math.round(downloaded * 100 / total) : 0));
+      progress.hidden = false; progress.querySelector('progress').value = percent;
+      progress.querySelector('span').textContent = percent + '% · ' + (downloaded / 1048576).toFixed(1) + (total ? ' / ' + (total / 1048576).toFixed(1) : '') + ' MB';
+    }
+    function result(payload) {
+      if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (_) { return; } }
+      if (!dialog || !payload) return;
+      const install = dialog.querySelector('[data-isu-install]'); if (!install) return;
+      if (payload.status === 'downloading') { installing = true; install.disabled = true; progress(payload); status(payload.message || 'Descargando…'); }
+      else if (payload.status === 'ready') { progress({ ...payload, percent: 100 }); status('Confirma la instalación en Android.'); installing = false; }
+      else if (payload.status === 'permission_required') { installing = false; install.disabled = false; install.textContent = 'Continuar'; status('Permite instalar desde esta app y pulsa Continuar.'); }
+      else if (payload.status === 'error') { installing = false; install.disabled = false; install.textContent = 'Reintentar'; status(payload.message || 'No se pudo descargar. Reintenta.'); }
+      dialog.querySelectorAll('[data-isu-idle]').forEach(b => { b.disabled = installing; });
+    }
+    function show(value) {
+      available = value;
+      const release = value.latest, body = shell('Nueva versión');
+      body.append(el('p', config.appName, 'isu-app'));
+      body.append(el('p', installed() + ' → ' + release.version + ' ' + state.channel, 'isu-versions'));
+      const skipped = value.releases.filter(r => r.versionCode < release.versionCode && newer(r, installed(), installedCode()));
+      if (skipped.length) body.append(el('p', 'Versiones intermedias: ' + skipped.slice(0, 3).reverse().map(r => r.version).join(' · ') + (skipped.length > 3 ? ' (+' + (skipped.length - 3) + ')' : ''), 'isu-caption'));
+      const changes = value.releases.filter(r => newer(r, installed(), installedCode()));
+      const list = el('ul', null, 'isu-changes'); changes.slice(0, 3).forEach(r => list.append(el('li', r.version + ' · ' + r.changelog))); body.append(list);
+      if (changes.length > 3) body.append(el('p', '+' + (changes.length - 3) + ' versiones anteriores', 'isu-caption'));
+      const bar = el('div', null, 'isu-progress'); bar.hidden = true; bar.dataset.isuProgress = '';
+      const meter = doc.createElement('progress'); meter.max = 100; meter.value = 0; meter.setAttribute('aria-label', 'Descarga'); bar.append(el('span', '0%'), meter); body.append(bar);
+      const install = button(body, 'Actualizar', () => {
+        installing = true; install.disabled = true; dialog.querySelectorAll('[data-isu-idle]').forEach(b => { b.disabled = true; });
+        status('Preparando…'); progress({ percent: 0 });
+        try {
+          if (config.install) config.install(release);
+          else if (native()?.installInhouseUpdate) native().installInhouseUpdate(release.apkUrl, release.apkSha256);
+          else if (native()?.installAppUpdate) native().installAppUpdate(release.apkUrl, release.apkSha256);
+          else throw Error('Abre la aplicación Android para instalar.');
+        } catch (error) { result({ status: 'error', message: error.message }); }
+      }, 'isu-primary'); install.dataset.isuInstall = '';
+      const later = button(body, 'Recordármelo más tarde', () => close(true)); later.dataset.isuIdle = '';
+      body.append(el('p', 'Te avisaremos dentro de 14 días.', 'isu-caption isu-centered'));
+      const change = button(body, 'Canal ' + state.channel + ' · Cambiar', () => settings(), 'isu-text'); change.dataset.isuIdle = '';
+      install.focus();
+    }
+    async function check({ manual = false } = {}) {
+      if (installing || (!manual && snoozed())) return false;
+      if (checking) { if (manual) { const found = await checking; if (available && found) show(available); } return checking; }
+      readState(); const channel = state.channel, token = generation;
+      if (manual && !dialog) settings(); if (manual) status('Buscando…');
+      const pending = (async () => {
+        try {
+          const value = await catalog(channel);
+          readState(); if (token !== generation || state.channel !== channel) return false;
+          available = value;
+          if (newer(value.latest, installed(), installedCode())) {
+            const id = channel + ':' + value.latest.versionCode + ':' + (state.snooze[channel] || 0);
+            if (manual || (!snoozed() && id !== lastPrompt)) {
+              if (!manual) lastPrompt = id;
+              if (!manual && config.onOffer) config.onOffer(value); else show(value);
+            }
+            return true;
+          }
+          if (manual) status(!value.latest ? 'Aún no hay versiones ' + channel + '.' : compareVersions(installed(), value.latest.version) > 0 ? 'Conservas tu versión hasta que ' + channel + ' la alcance.' : 'Estás al día en el canal ' + channel + '.');
+          return false;
+        } catch (_) { if (manual) status('No se pudo comprobar. Reintenta.'); return false; }
+      })();
+      checking = pending;
+      try { return await pending; } finally { if (checking === pending) checking = null; }
+    }
+    function start() {
+      if (started) return; started = true; readState();
+      win.handleInhouseUpdateResult = result;
+      win.addEventListener('focus', automatic); timer = win.setInterval(automatic, 15 * 60000); automatic();
+    }
+    function automatic() { check(); }
+    function stop() { win.removeEventListener('focus', automatic); win.clearInterval(timer); started = false; }
+    function offerPending(value) {
+      readState(); const valid = validateCatalog(value, state.channel, config);
+      if (!snoozed() && newer(valid.latest, installed(), installedCode())) { win.handleInhouseUpdateResult = result; show(valid); return true; }
+      return false;
+    }
+    win.handleInhouseUpdateResult = result;
+    return { start, stop, check, settings, close, result, offerPending, getState: readState, version: VERSION };
+  }
+  const api = { create, compareVersions, validateCatalog, newer, TWO_WEEKS, VERSION };
+  root.InhouseServicesUpdater = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);

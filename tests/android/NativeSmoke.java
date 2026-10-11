@@ -283,10 +283,51 @@ public final class NativeSmoke extends Instrumentation {
             String version=(String)type("es.calma.youtube.nativeapp.CalmaBuild").getField("VERSION").get(null);
             String date=(String)type("es.calma.youtube.nativeapp.CalmaBuild").getField("RELEASE_DATE").get(null);
             check(settingsTexts.contains("v"+version+" · "+date),"actual settings display release metadata");
+            SharedUpdateSmoke.verify(this,"es.calma.youtube.UpdateActivity","miguelcoxcaballero/youtube-calma",version);
             String installerUi=verifyInstallerHandoff(context,settingsActivity);
             result.putString("stream","CALMA_INSTALLER_UI "+installerUi+"\nCALMA_NATIVE_TESTS_OK checks="+checks+"\n");finish(-1,result);
         } catch(Throwable error) {
             StringWriter text=new StringWriter();error.printStackTrace(new PrintWriter(text));result.putString("stream",text.toString());finish(0,result);
         }
+    }
+}
+
+/** Exercises the bundled WebView, actual JS bridge and persisted updater preferences. */
+final class SharedUpdateSmoke {
+    private static android.webkit.WebView find(android.view.View view) {
+        if(view instanceof android.webkit.WebView)return (android.webkit.WebView)view;
+        if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.webkit.WebView found=find(group.getChildAt(i));if(found!=null)return found;}}
+        return null;
+    }
+    private static String eval(android.app.Instrumentation test,android.webkit.WebView web,String script)throws Exception {
+        java.util.concurrent.CountDownLatch done=new java.util.concurrent.CountDownLatch(1);final String[] value={null};
+        test.runOnMainSync(()->web.evaluateJavascript(script,result->{value[0]=result;done.countDown();}));
+        if(!done.await(8,java.util.concurrent.TimeUnit.SECONDS))throw new AssertionError("Updater JS callback timed out");return value[0];
+    }
+    public static void verify(android.app.Instrumentation test,String activityName,String repo,String version)throws Exception {
+        android.content.Context context=test.getTargetContext();android.content.SharedPreferences prefs=context.getSharedPreferences("inhouse-services-updater",0);
+        String original=prefs.getString("state",null);prefs.edit().putString("state","{\"channel\":\"A\",\"snooze\":{}}").commit();
+        android.app.Activity activity=null;
+        try {
+            activity=test.startActivitySync(new android.content.Intent().setClassName(context.getPackageName(),activityName).putExtra("settings",true).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+            final android.app.Activity target=activity;final android.webkit.WebView[] found={null};test.runOnMainSync(()->found[0]=find(target.getWindow().getDecorView()));
+            if(found[0]==null)throw new AssertionError("Updater WebView missing");android.webkit.WebView web=found[0];
+            long deadline=android.os.SystemClock.uptimeMillis()+20000;boolean ready=false;
+            while(android.os.SystemClock.uptimeMillis()<deadline){if("true".equals(eval(test,web,"Boolean(window.InhouseUpdater && document.querySelector('.isu-channels'))"))){ready=true;break;}Thread.sleep(200);}
+            if(!ready)throw new AssertionError("Bundled updater settings did not load");
+            if(!org.json.JSONObject.quote(version).equals(eval(test,web,"InhouseNative.getAppVersion()")))throw new AssertionError("Installed version mismatch");
+            eval(test,web,"document.querySelectorAll('.isu-channels button')[1].click()");
+            if(!"B".equals(new org.json.JSONObject(prefs.getString("state","{}")).getString("channel")))throw new AssertionError("Channel B did not persist through native bridge");
+            eval(test,web,"document.querySelectorAll('.isu-channels button')[0].click()");
+            long code=context.getPackageManager().getPackageInfo(context.getPackageName(),0).getLongVersionCode()+1;
+            org.json.JSONObject release=new org.json.JSONObject().put("version","99.0.0").put("versionCode",code).put("apkUrl","https://github.com/"+repo+"/releases/download/test/update.apk").put("apkSha256",String.format("%064d",0)).put("apkSizeBytes",1).put("releasedAt","2026-10-11T00:00:00Z").put("changelog","Prueba del aviso.");
+            org.json.JSONObject catalog=new org.json.JSONObject().put("schemaVersion",1).put("channel","A").put("latest",release).put("releases",new org.json.JSONArray().put(release));
+            if(!"true".equals(eval(test,web,"InhouseUpdater.offerPending("+catalog+")")))throw new AssertionError("Optional update popup missing");
+            String labels=eval(test,web,"document.body.innerText");if(!labels.contains("Recordármelo")||!labels.contains("99.0.0")||!labels.contains(version))throw new AssertionError("Popup labels missing: "+labels);
+            eval(test,web,"InhouseUpdater.close(true)");
+            long delay=new org.json.JSONObject(prefs.getString("state","{}")).getJSONObject("snooze").getLong("A")-System.currentTimeMillis();
+            if(delay<14L*86400000-10000||delay>14L*86400000)throw new AssertionError("Reminder is not fourteen days");
+            android.util.Log.i("INHOUSE_UPDATER_TEST","PASS: bundled settings, actual version, native A/B persistence, optional popup and 14-day reminder");
+        }finally{if(activity!=null){final android.app.Activity closing=activity;test.runOnMainSync(()->closing.finish());}if(original==null)prefs.edit().remove("state").commit();else prefs.edit().putString("state",original).commit();}
     }
 }

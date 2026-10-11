@@ -80,9 +80,9 @@ public final class CalmaSettingsActivity extends Activity {
         content.addView(text("Se reinicia al cambiar", 13, muted));
         separator(content);
         LinearLayout update = row();
-        update.addView(text("Actualizar aplicación", 16, foreground), new LinearLayout.LayoutParams(0, dp(58), 1));
+        update.addView(text("Actualizaciones · A/B", 16, foreground), new LinearLayout.LayoutParams(0, dp(58), 1));
         update.addView(text("›", 28, muted), new LinearLayout.LayoutParams(dp(24), dp(58)));
-        press(update, () -> startActivity(new Intent().setClassName(getPackageName(), "es.calma.youtube.UpdateActivity")));
+        press(update, () -> startActivity(new Intent().setClassName(getPackageName(), "es.calma.youtube.UpdateActivity").putExtra("settings",true)));
         content.addView(update);
         InhouseUi.footer(this, content, muted, "https://github.com/miguelcoxcaballero/youtube-calma");
         refresh();

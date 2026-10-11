@@ -1,9 +1,9 @@
 {
-  "version": "0.1.5",
-  "versionCode": 1557278150,
+  "version": "0.1.6",
+  "versionCode": 1557278151,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.5/YouTube-Calma-0.1.5.apk",
-  "apkSha256": "2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704",
-  "apkSizeBytes": 183345795,
-  "releaseNotes": "Notificaciones aparece entre Suscripciones y tu cuenta en la barra nativa. El logo de los ajustes abre Inhouse Software."
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.6/YouTube-Calma-0.1.6.apk",
+  "apkSha256": "0d7c0c9f2b7ccf6d6c90f0dc44a534b170782ac7bd7abd5254a90291c6371fa7",
+  "apkSizeBytes": 183345997,
+  "releaseNotes": "Canales A/B y recordatorio opcional."
 }

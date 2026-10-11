@@ -15,7 +15,7 @@ with apk.open('wb') as dest:
         chunk=source/part['name'];assert sha(chunk)==part['sha256'];dest.write(chunk.read_bytes())
 assert sha(apk)==m['apkSha256'] and apk.stat().st_size==m['apkSizeBytes']
 sums=out/'SHA256SUMS.txt';sums.write_text(sha(apk)+'  '+name+'\n')
-run('gh','release','create',tag,'--target',t['sourceCommit'],'--title','YouTube Calma '+m['version'],'--notes-file',source/'release-notes.txt','--draft')
+run('gh','release','create',tag,'--target',t['sourceCommit'],'--title','YouTube Calma '+m['version']+' · A','--notes-file',source/'release-notes.txt','--draft')
 run('gh','release','upload',tag,apk,sums,R/'android-update.json',source/'build-info.json')
-run('gh','release','edit',tag,'--draft=false','--latest')
+run('gh','release','edit',tag,'--draft=false','--prerelease','--latest=false')
 print('Published '+m['apkUrl'])
