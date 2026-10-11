@@ -2,13 +2,14 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
-[Descargar APK 0.1.8 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.8/YouTube-Calma-0.1.8.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.8)
+[Descargar APK 0.1.9 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.9/YouTube-Calma-0.1.9.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.9)
 
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
 - Shorts se ocultan en Inicio, Suscripciones, canales, búsqueda, historial y descripción. Se ocultan los botones Shorts y Crear.
-- La barra inferior incorpora Notificaciones entre Suscripciones y tu cuenta, con el buzón nativo de avisos de YouTube; la campana y Crear se ocultan en la barra superior.
+- La barra inferior muestra Suscripciones a la izquierda, tu cuenta en el centro y Notificaciones a la derecha, con el buzón nativo de avisos de YouTube; la campana y Crear se ocultan en la barra superior.
 - El preset de [settings.json](settings.json), con las peticiones posteriores de [navigation-settings.json](navigation-settings.json), se aplica antes de inicializar los ajustes de ReVanced. Las actualizaciones conservan las elecciones posteriores y los contadores de SponsorBlock.
+- Inhouse YouTube settings aparece debajo de ReVanced con su icono y la misma plantilla nativa de fila, incluida la reserva de espacio para iconos.
 - **Inhouse services updater** comprueba al abrir la app. En **Inhouse YouTube settings → Actualizaciones · A/B** puedes elegir canal y comprobar manualmente.
 
 ## Instalación de actualizaciones (0.1.7 · A)
@@ -55,6 +56,8 @@ Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la cl
 
 ## Código y verificación
 
+La 0.1.9 supera 193 comprobaciones nativas por API en Android 14, 15 y 16: orden de pestañas, destino del buzón, icono y alineación en ambos diseños de ajustes, actualización sobre 0.1.5 e instalador. [Resultados](validation/0.1.9.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38159739988). Sin cuenta autenticada ni teléfono físico.
+
 La 0.1.7 supera la instalación sobre la APK pública 0.1.5 con aumento estricto del código Android, 183 comprobaciones nativas por API y la apertura de la confirmación del instalador en Android 14, 15 y 16. [Evidencia vinculada al APK firmado](validation/0.1.7.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38155816109). La descarga pública contiene el código 1557278152 y coincide con el catálogo. Sin cuenta autenticada ni teléfono físico.
 
 La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nativas en Android 14, 15 y 16: apertura real de ajustes, versión instalada, persistencia de A/B y aplazamiento de 14 días. [Resultados de esta versión](validation/0.1.6.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38152226040). Esas pruebas no comparaban el código del manifiesto con el catálogo; la 0.1.7 añade esa comprobación y una actualización desde 0.1.5.
@@ -62,7 +65,7 @@ La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nat
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.8` y Android `versionCode=1557278153`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.9` y Android `versionCode=1557278154`.
 
 La 0.1.5 ha superado 181 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Incluyen los modelos nativos de Notificaciones, su posición, deduplicación y ruta al buzón; el clic real del logo hacia la web; iconos, ajustes, perfiles y apertura del instalador hasta su confirmación. [Resultados y alcance](validation/0.1.5.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38141579965). La confirmación de instalación se cancela en las pruebas.
 
