@@ -31,7 +31,9 @@ Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt)
 
 El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.2` y Android `versionCode=1557278147`.
 
-Pruebas: integridad de la APK, preset, bibliotecas nativas, procedencia del instalador, popup/descarga y recuperación de actualizaciones. La instrumentación Android comprueba los valores cargados por ReVanced, callbacks de navegación, filtros y conservación de estadísticas. Las pruebas sin iniciar sesión no verifican las suscripciones de una cuenta real ni la reproducción autenticada.
+La 0.1.2 ha superado 159 comprobaciones por versión en emuladores Android 14, 15 y 16, incluida la apertura real del instalador desde `cache/updates/` hasta su confirmación. [Resultados y alcance](validation/0.1.2.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38136649010). La confirmación de instalación se cancela en las pruebas.
+
+También se comprueban integridad de la APK, preset, bibliotecas nativas, procedencia del instalador, popup/progreso y recuperación de actualizaciones. La instrumentación Android comprueba los valores cargados por ReVanced, callbacks de navegación, filtros y conservación de estadísticas. Las pruebas sin iniciar sesión no verifican las suscripciones de una cuenta real ni la reproducción autenticada.
 
 ## Compilación
 
