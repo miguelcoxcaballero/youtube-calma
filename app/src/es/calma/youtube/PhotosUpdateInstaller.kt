@@ -70,7 +70,7 @@ class PhotosUpdateInstaller(private val activity: Activity, private val listener
 
         val apkUri = FileProvider.getUriForFile(
           activity,
-          "${activity.packageName}.fileprovider",
+          "${activity.packageName}.update-provider",
           apkFile,
         )
         activity.runOnUiThread {

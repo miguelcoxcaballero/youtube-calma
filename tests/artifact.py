@@ -28,7 +28,7 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
 photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'app/src/es/calma/youtube/PhotosUpdateInstaller.kt').read_text()
 assert photos[photos.index('  private fun download('):photos.index('  private fun publishDownloadProgress(')] in adapted
 assert photos[photos.index('  private fun validateUrl('):] in adapted
-install=photos[photos.index('  private fun installUpdate('):photos.index('  private fun download(')].replace('private fun installUpdate(', 'fun installUpdate(').replace('MethodChannel.Result','Result').replace('.update-provider','.fileprovider')
+install=photos[photos.index('  private fun installUpdate('):photos.index('  private fun download(')].replace('private fun installUpdate(', 'fun installUpdate(').replace('MethodChannel.Result','Result')
 assert install in adapted
 assert (R/'vendor/inhouse-read/android-update.css').read_bytes()==(R/'app/assets/updates/android-update.css').read_bytes()
 source=(R/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()

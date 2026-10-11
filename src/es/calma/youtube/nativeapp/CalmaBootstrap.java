@@ -60,6 +60,15 @@ public final class CalmaBootstrap {
                     .putBoolean("calma_watch_v2", true).commit();
                 if (!saved) return;
             }
+            // This APK is intentionally distributed as a signed Calma release,
+            // not built/installed on this phone by ReVanced Manager. Its original
+            // patch-time/installer-origin warning does not describe this build.
+            // The Photos installer's package, version, SHA and signer checks stay intact.
+            if (!preferences.getBoolean("calma_distribution_v3", false)) {
+                if (!preferences.edit()
+                    .putString("revanced_check_environment_warnings_issued", "2147483647")
+                    .putBoolean("calma_distribution_v3", true).commit()) return;
+            }
             seeded = true;
         }
         Context app = context.getApplicationContext();

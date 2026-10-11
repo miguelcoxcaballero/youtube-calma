@@ -2,7 +2,7 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
-[Descargar APK 0.1.1](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.1/YouTube-Calma-0.1.1.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.1)
+[Descargar APK 0.1.2](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.2/YouTube-Calma-0.1.2.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.2)
 
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
@@ -10,6 +10,14 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 - La barra inferior solicita el botón nativo de Notificaciones; la campana y Crear se ocultan en la barra superior.
 - El preset de [settings.json](settings.json), con las peticiones posteriores de [navigation-settings.json](navigation-settings.json), se aplica antes de inicializar los ajustes de ReVanced. Las actualizaciones conservan las elecciones posteriores y los contadores de SponsorBlock.
 - El actualizador reutiliza Inhouse Read e Inhouse Photos. La comprobación automática se inicia al abrir la app; la manual está en los ajustes de ReVanced.
+
+## Actualizador corregido en 0.1.2
+
+La 0.1.0 y la 0.1.1 descargaban la actualización, pero fallaban al abrir el instalador porque su proveedor de archivos compartía autoridad con el original de YouTube. La 0.1.2 usa la autoridad independiente original de Inhouse Photos. Mantiene las comprobaciones de paquete, versión, hash y firma.
+
+**Para reparar una instalación 0.1.0 o 0.1.1, descarga e instala la 0.1.2 desde el enlace de arriba, sin desinstalar Calma.** Esta vez el actualizador antiguo no puede aplicar su propia reparación. Se conservan la cuenta y los ajustes.
+
+También se omite el aviso de la base que esperaba una instalación recién parcheada desde ReVanced Manager: Calma se distribuye aquí como APK firmada.
 
 ## Instalación
 
@@ -21,7 +29,7 @@ Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la cl
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.1` y Android `versionCode=1557278146`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.2` y Android `versionCode=1557278147`.
 
 Pruebas: integridad de la APK, preset, bibliotecas nativas, procedencia del instalador, popup/descarga y recuperación de actualizaciones. La instrumentación Android comprueba los valores cargados por ReVanced, callbacks de navegación, filtros y conservación de estadísticas. Las pruebas sin iniciar sesión no verifican las suscripciones de una cuenta real ni la reproducción autenticada.
 

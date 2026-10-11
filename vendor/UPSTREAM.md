@@ -13,4 +13,6 @@ Los callbacks de progreso de Read envían los eventos de Photos al popup origina
 
 El anfitrión nativo arranca el comprobador al reanudar la actividad de YouTube. El popup usa exclusivamente recursos locales. Las pruebas en `tests/updater.py` y `tests/artifact.py` comprueban el comportamiento y los bloques literales reutilizados.
 
+Desde 0.1.2 se conserva literalmente la autoridad `${activity.packageName}.update-provider` de Photos. La adaptación anterior a `.fileprovider` chocaba con el proveedor de archivos original de YouTube y fallaba al abrir el instalador al 100 %. Ambos proveedores tienen ahora autoridades distintas; el de actualizaciones sólo comparte `cache/updates/` mediante permisos temporales de lectura.
+
 Android exige autorizar la fuente y confirmar la instalación.

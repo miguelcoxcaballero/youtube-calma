@@ -20,7 +20,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278146")
+            manifest.setAttribute("android:versionCode", "1557278147")
             val app = manifest.getElementsByTagName("application").item(0) as Element
             fun add(parent: Element, tag: String, attrs: Map<String,String>): Element {
                 val node = xml.createElement(tag)
@@ -30,9 +30,16 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             add(manifest, "uses-permission", mapOf("name" to "android.permission.REQUEST_INSTALL_PACKAGES"))
             add(app,"activity",mapOf("name" to "es.calma.youtube.UpdateActivity", "exported" to "false", "theme" to "@style/CalmaUpdatePopupTheme"))
-            val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to "$PKG.fileprovider", "exported" to "false", "grantUriPermissions" to "true"))
+            // YouTube already owns .fileprovider. Keep Photos' separate update
+            // authority so PackageManager resolves our cache paths, not theirs.
+            val authority="$PKG.update-provider"
+            val providers=app.getElementsByTagName("provider")
+            for (i in 0 until providers.length) {
+                check(authority !in (providers.item(i) as Element).getAttribute("android:authorities").split(';'))
+            }
+            val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to authority, "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.1"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.2"))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {

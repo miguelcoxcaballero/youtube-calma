@@ -19,6 +19,41 @@ public final class NativeSmoke extends Instrumentation {
     private Object call(String name,String method,Class<?>[] params,Object... values) throws Exception {
         Method m=type(name).getDeclaredMethod(method,params);m.setAccessible(true);return m.invoke(null,values);
     }
+    private void verifyInstallerHandoff(Context context,android.app.Activity activity) throws Exception {
+        String authority=context.getPackageName()+".update-provider";
+        android.content.pm.PackageManager pm=context.getPackageManager();
+        Set<String> authorities=new HashSet<>();
+        for(android.content.pm.ProviderInfo provider:pm.getPackageInfo(context.getPackageName(),android.content.pm.PackageManager.GET_PROVIDERS).providers) {
+            for(String name:provider.authority.split(";")) check(authorities.add(name),"unique provider authority "+name);
+        }
+        android.content.pm.ProviderInfo provider=pm.resolveContentProvider(authority,android.content.pm.PackageManager.GET_META_DATA);
+        check(provider!=null && provider.name.equals("es.calma.vendor.androidx.core.content.FileProvider"),"update provider resolves to Calma");
+        check(!provider.exported && provider.grantUriPermissions,"private provider with temporary grants");
+        check(pm.resolveContentProvider(context.getPackageName()+".fileprovider",0).name.equals("com.google.android.apps.youtube.app.common.util.MainAppFileProviderCompat"),"original YouTube provider preserved");
+        File directory=new File(context.getCacheDir(),"updates");directory.mkdirs();
+        File apk=new File(directory,"inhouse-photos-installer-test.apk");
+        try(InputStream in=new FileInputStream(context.getApplicationInfo().sourceDir);OutputStream out=new FileOutputStream(apk)) {
+            byte[] buffer=new byte[65536];for(int size;(size=in.read(buffer))!=-1;)out.write(buffer,0,size);
+        }
+        Method uriMethod=type("es.calma.vendor.androidx.core.content.FileProvider").getMethod("getUriForFile",Context.class,String.class,File.class);
+        android.net.Uri uri=(android.net.Uri)uriMethod.invoke(null,context,authority,apk);
+        check(uri.getScheme().equals("content") && uri.getAuthority().equals(authority),"update content URI");
+        try(android.os.ParcelFileDescriptor descriptor=context.getContentResolver().openFileDescriptor(uri,"r")) {
+            check(descriptor!=null && descriptor.getStatSize()==apk.length(),"provider opens entire downloaded APK");
+        }
+        check("application/vnd.android.package-archive".equals(context.getContentResolver().getType(uri)),"APK MIME type");
+        boolean rejected=false;
+        try { uriMethod.invoke(null,context,authority,new File(context.getFilesDir(),"outside.apk")); }
+        catch(InvocationTargetException error) { rejected=error.getCause() instanceof IllegalArgumentException; }
+        check(rejected,"files outside update cache cannot be shared");
+        android.content.Intent install=new android.content.Intent(android.content.Intent.ACTION_VIEW)
+            .setDataAndType(uri,"application/vnd.android.package-archive")
+            .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        final Throwable[] problem={null};
+        runOnMainSync(()->{try {activity.startActivity(install);}catch(Throwable error){problem[0]=error;}});
+        if(problem[0]!=null)throw new AssertionError(problem[0]);
+        check(true,"APK handed to Android installer with read permission");
+    }
     @Override public void onCreate(Bundle args) { super.onCreate(args);start(); }
     @Override public void onStart() {
         Bundle result=new Bundle();
@@ -107,6 +142,8 @@ public final class NativeSmoke extends Instrumentation {
             // Reinitialization must not reset counters or user choices.
             String key="sb_local_time_saved_number_segments";String before=prefs.getString(key,"");prefs.edit().putString(key,"4000").commit();
             call(bootstrap,"initialize",new Class[]{Context.class},context);check(prefs.getString(key,"").equals("4000"),"preserve accumulated stats");prefs.edit().putString(key,before).commit();
+            check(Boolean.FALSE.equals(call("app.revanced.extension.shared.checks.Check","shouldRun",new Class[]{})),"Manager-only distribution warning disabled");
+            verifyInstallerHandoff(context,activity);
             result.putString("stream","CALMA_NATIVE_TESTS_OK checks="+checks+"\n");finish(-1,result);
         } catch(Throwable error) {
             StringWriter text=new StringWriter();error.printStackTrace(new PrintWriter(text));result.putString("stream",text.toString());finish(0,result);

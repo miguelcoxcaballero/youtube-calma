@@ -1,9 +1,9 @@
 {
-  "version": "0.1.1",
-  "versionCode": 1557278146,
+  "version": "0.1.2",
+  "versionCode": 1557278147,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.1/YouTube-Calma-0.1.1.apk",
-  "apkSha256": "f405a742eca8ffe291eca055c6f757fb79d4c58a4dfdb1a58e2e0a1fa8c5278e",
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.2/YouTube-Calma-0.1.2.apk",
+  "apkSha256": "856f625316bdcb0ebffb12674113150c52c1da8c803632aebe80f26245da1816",
   "apkSizeBytes": 181936261,
-  "releaseNotes": "Sin pestaña Inicio: abre Suscripciones. Vídeos sin recomendaciones debajo, con descripción y comentarios. Sin Shorts ni Crear. Notificaciones abajo y actualizador en los ajustes."
+  "releaseNotes": "Corregida la apertura del instalador tras descargar una actualización. Esta reparación debe instalarse manualmente desde GitHub si tienes la 0.1.0 o 0.1.1. Conserva los datos y los cambios de Suscripciones, navegación y vídeos."
 }

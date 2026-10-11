@@ -47,6 +47,7 @@ try:
     adb('shell','pm','grant','app.revanced.android.gms','android.permission.POST_NOTIFICATIONS')
     required(adb('install','--no-incremental',apk,timeout=120),'install')
     adb('shell','pm','grant',PKG,'android.permission.POST_NOTIFICATIONS')
+    required(adb('shell','appops','set',PKG,'REQUEST_INSTALL_PACKAGES','allow'),'installer-permission')
     adb('logcat','-b','all','-c')
     resolved=required(adb('shell','cmd','package','resolve-activity','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER',PKG),'launcher')
     component=[line.strip() for line in resolved.splitlines() if '/' in line and PKG in line][-1]
@@ -70,7 +71,22 @@ try:
     required(adb('install','--no-incremental',smoke),'install-tests')
     result=required(adb('shell','am','instrument','-w','es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'native-tests')
     assert 'CALMA_NATIVE_TESTS_OK' in result,result
-    report['nativeTests']=result;report['passed']=True
+    report['nativeTests']=result
+    # Instrumentation shares the actual signed APK from the private update cache
+    # through the real provider and launches Android's installer with a read grant.
+    # The installer must parse it and reach its update confirmation, not a file
+    # provider error or an invalid-package dialog. Do not accept the installation.
+    time.sleep(4)
+    adb('shell','uiautomator','dump','/sdcard/installer.xml',timeout=30)
+    required(adb('pull','/sdcard/installer.xml',OUT/'installer.xml'),'installer-ui')
+    nodes=list(ET.parse(OUT/'installer.xml').iter('node'))
+    texts=[node.get('text') for node in nodes if node.get('text')]
+    report['installerUi']=texts
+    report['installerPackages']=sorted(set(node.get('package') for node in nodes if node.get('package')))
+    assert any('packageinstaller' in value for value in report['installerPackages']),report['installerPackages']
+    assert any('update' in value.lower() for value in texts) and any('YouTube' in value for value in texts),texts
+    report['installerHandoffPassed']=True
+    report['passed']=True
 except Exception as error:
     report['passed']=False;report['error']=str(error);(OUT/'error.txt').write_text(traceback.format_exc())
 finally:
