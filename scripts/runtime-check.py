@@ -53,8 +53,11 @@ try:
         output=required(run(SDK/'build-tools/36.0.0/aapt2','dump','badging',path),'metadata-'+path.stem)
         return int(re.search(r"versionCode='(\d+)'",output)[1])
     baseline_code,candidate_code=apk_code(baseline),apk_code(apk)
-    manifest=json.loads((ROOT/'android-update.json').read_text())
-    assert candidate_code==manifest['versionCode'] and candidate_code>baseline_code
+    # The public catalog intentionally remains on the previous APK until publication.
+    # Verify the staged candidate against its source release identity, not that older catalog.
+    from release_metadata import release_version
+    source_version,source_code=release_version()
+    assert transport['version']==source_version and candidate_code==source_code and candidate_code>baseline_code
     required(adb('install','--no-incremental',baseline,timeout=120),'install-baseline')
     required(adb('install','-r','--no-incremental',apk,timeout=120),'install')
     report['upgrade']={'from':'0.1.5','installedCode':baseline_code,'candidateCode':candidate_code,'strictlyNewer':True,'replacedExistingInstall':True}
