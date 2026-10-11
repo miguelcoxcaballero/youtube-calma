@@ -1,0 +1,3 @@
+Fixed Inhouse settings icon.
+
+The native settings row now renders the Inhouse symbol correctly in light and dark themes. Channel A.
