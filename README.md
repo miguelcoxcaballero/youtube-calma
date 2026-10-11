@@ -2,6 +2,8 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
+[Descargar APK 0.1.0](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.0/YouTube-Calma-0.1.0.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.0)
+
 - Inicio abre el feed nativo de Suscripciones, también al volver a pulsar Inicio.
 - Shorts se ocultan en Inicio, Suscripciones, canales, búsqueda, historial y descripción. Se ocultan los botones Shorts y Crear.
 - La barra inferior solicita el botón nativo de Notificaciones; la campana y Crear se ocultan en la barra superior.
