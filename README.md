@@ -43,7 +43,7 @@ El pie muestra una variante blanca sobre negro del [símbolo de Inhouse Read](ht
 
 La 0.1.0 y la 0.1.1 descargaban la actualización, pero fallaban al abrir el instalador porque su proveedor de archivos compartía autoridad con el original de YouTube. La 0.1.2 usa la autoridad independiente original de Inhouse Photos. Mantiene las comprobaciones de paquete, versión, hash y firma.
 
-**Para reparar una instalación 0.1.0 o 0.1.1, descarga e instala la 0.1.5 desde el enlace de arriba, sin desinstalar Calma.** Esta vez el actualizador antiguo no puede aplicar su propia reparación. Se conservan la cuenta y los ajustes.
+**Para reparar una instalación 0.1.0 o 0.1.1, descarga e instala la 0.1.7 desde el enlace de arriba, sin desinstalar Calma.** Esta vez el actualizador antiguo no puede aplicar su propia reparación. Se conservan la cuenta y los ajustes.
 
 También se omite el aviso de la base que esperaba una instalación recién parcheada desde ReVanced Manager: Calma se distribuye aquí como APK firmada.
 
@@ -54,6 +54,8 @@ La APK requiere Android 9 o posterior y ReVanced GmsCore, como el archivo origin
 Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la clave de Calma. **No puede instalarse encima de la APK original con otra firma**. Si tienes esa ReVanced instalada, exporta los ajustes y conserva tus descargas antes de desinstalarla e instalar esta. El YouTube oficial utiliza otro paquete y puede permanecer instalado. Las siguientes versiones de Calma se podrán actualizar normalmente.
 
 ## Código y verificación
+
+La 0.1.7 supera la instalación sobre la APK pública 0.1.5 con aumento estricto del código Android, 183 comprobaciones nativas por API y la apertura de la confirmación del instalador en Android 14, 15 y 16. [Evidencia vinculada al APK firmado](validation/0.1.7.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38155816109). La descarga pública contiene el código 1557278152 y coincide con el catálogo. Sin cuenta autenticada ni teléfono físico.
 
 La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nativas en Android 14, 15 y 16: apertura real de ajustes, versión instalada, persistencia de A/B y aplazamiento de 14 días. [Resultados de esta versión](validation/0.1.6.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38152226040). Esas pruebas no comparaban el código del manifiesto con el catálogo; la 0.1.7 añade esa comprobación y una actualización desde 0.1.5.
 
