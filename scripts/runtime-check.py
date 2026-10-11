@@ -70,6 +70,11 @@ try:
             report['ui-'+mode]=list(dict.fromkeys(node.get('text') or node.get('content-desc') for node in ET.parse(ui).iter('node') if node.get('text') or node.get('content-desc')))
     smoke=ROOT/'runtime-input/YouTube-Calma-Smoke.apk';assert sha(smoke)==transport['smokeSha256']
     required(adb('install','--no-incremental',smoke),'install-tests')
+    report['profiles']=[]
+    for phase in ['disable','restore']:
+        profile=required(adb('shell','am','instrument','-w','-e','profile',phase,'es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'profile-'+phase)
+        assert 'CALMA_PROFILE_OK '+phase in profile,profile
+        report['profiles'].append(profile)
     result=required(adb('shell','am','instrument','-w','es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'native-tests')
     assert 'CALMA_NATIVE_TESTS_OK' in result,result
     report['nativeTests']=result
