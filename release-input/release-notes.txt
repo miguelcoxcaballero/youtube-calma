@@ -1,0 +1,3 @@
+Canales A/B y recordatorio opcional.
+
+Inhouse services updater compartido con las cinco apps. Actualizar es opcional; «Recordármelo más tarde» aplaza el aviso 14 días. Canal B solo por petición expresa.
