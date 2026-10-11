@@ -1,0 +1,18 @@
+{
+  "version": "0.1.9",
+  "base": {
+    "sourceUrl": "https://drive.google.com/file/d/1sAZMl6i0oeDcw00t_d2CJ-A4QTCqwM4i/view",
+    "fileName": "YouTube.ReVanced.ver.20.40.45.build.1557278144.apk",
+    "sha256": "220c4eb6d315a8887ef404d6530b16196701b84848e568360b0b58bdbe3103f2",
+    "size": 180952874,
+    "package": "app.revanced.android.youtube",
+    "versionName": "20.40.45",
+    "versionCode": 1557278144,
+    "signerSha256": "79bc2ba9497e5145007195bbfd0d3f6b6ceb11e081f70e9058d7d3551e6b390a"
+  },
+  "apkSha256": "08564aefb83b4d8335a70f3e23f2497484eef332ae223642044278e7e5b84861",
+  "apkSizeBytes": 183346081,
+  "patchBundleSha256": "f700d4770deb38b5787cab4e7b9b44b8677b36a350e25d43e58b99e4756e701b",
+  "extensionSha256": "0f2ed0c5dbc2e4ff4d9923ab2249917c07e2d0c6d0669bda4f4d293d2f6bb3fa",
+  "signedInAccountTested": false
+}

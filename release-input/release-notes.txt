@@ -1,0 +1,3 @@
+Reordered navigation and aligned settings icon.
+
+Subscriptions · Profile · Notifications. Inhouse settings uses the native row layout and its own icon.
