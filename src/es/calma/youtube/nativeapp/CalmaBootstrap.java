@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import java.io.ByteArrayOutputStream;
@@ -18,6 +19,7 @@ public final class CalmaBootstrap {
 
     public static synchronized void initialize(Context context) {
         if (context == null) return;
+        if (context instanceof Activity) launchSubscriptions(((Activity) context).getIntent());
         if (!seeded) {
             SharedPreferences preferences = context.getSharedPreferences("revanced_prefs", 0);
             if (!preferences.getBoolean("calma_preset_v1", false)) {
@@ -44,6 +46,20 @@ public final class CalmaBootstrap {
                     return;
                 }
             }
+            // 0.1.0 users already have the original preset. Apply only the newly
+            // requested navigation/watch changes, preserving all other values.
+            if (!preferences.getBoolean("calma_watch_v2", false)) {
+                boolean saved=preferences.edit()
+                    .putBoolean("revanced_hide_home_button", true)
+                    .putBoolean("revanced_hide_related_videos", true)
+                    .putBoolean("revanced_hide_related_videos_overlay", true)
+                    .putBoolean("revanced_hide_filter_bar_feed_in_related_videos", true)
+                    .putBoolean("revanced_hide_comments_section", false)
+                    .putBoolean("revanced_hide_comments_preview_comment", false)
+                    .putBoolean("revanced_hide_comments_button", false)
+                    .putBoolean("calma_watch_v2", true).commit();
+                if (!saved) return;
+            }
             seeded = true;
         }
         Context app = context.getApplicationContext();
@@ -64,6 +80,12 @@ public final class CalmaBootstrap {
 
     public static String homeBrowseId(String original) {
         return "FEwhat_to_watch".equals(original) ? "FEsubscriptions" : original;
+    }
+
+    public static void launchSubscriptions(Intent intent) {
+        if (intent != null && Intent.ACTION_MAIN.equals(intent.getAction())) {
+            intent.setAction("com.google.android.youtube.action.open.subscriptions");
+        }
     }
 
     public static void toolbarItem(Enum<?> icon, android.view.MenuItem item) {

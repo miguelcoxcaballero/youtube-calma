@@ -46,6 +46,7 @@ try:
     adb('shell','dumpsys','deviceidle','whitelist','+app.revanced.android.gms')
     adb('shell','pm','grant','app.revanced.android.gms','android.permission.POST_NOTIFICATIONS')
     required(adb('install','--no-incremental',apk,timeout=120),'install')
+    adb('shell','pm','grant',PKG,'android.permission.POST_NOTIFICATIONS')
     adb('logcat','-b','all','-c')
     resolved=required(adb('shell','cmd','package','resolve-activity','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER',PKG),'launcher')
     component=[line.strip() for line in resolved.splitlines() if '/' in line and PKG in line][-1]

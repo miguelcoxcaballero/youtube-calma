@@ -16,14 +16,14 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
         if re.fullmatch('classes[0-9]*.dex',n):old.update(compiler.dex_classes(base.read(n)))
     assert old<=classes,'Original classes lost'
     assert 'Les/calma/youtube/nativeapp/CalmaBootstrap;' in classes
-    assert b'CalmaBuild' in strings and b'0.1.0' in strings
+    assert b'CalmaBuild' in strings and m['version'].encode() in strings
     for n in ['updater.js','index.html','android-update.css']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
     assert z.read('assets/calma-preferences.json')==(R/'resources/assets/calma-preferences.json').read_bytes()
-    supplied=json.loads((R/'settings.json').read_text());preset=json.loads(z.read('assets/calma-preferences.json'))
+    supplied=json.loads((R/'settings.json').read_text());supplied.update(json.loads((R/'navigation-settings.json').read_text()));preset=json.loads(z.read('assets/calma-preferences.json'))
     for k,v in supplied.items():
         stored=k if k.startswith('sb_') else 'revanced_'+k
         expected=v if isinstance(v,bool) else str(v)
-        if k in {'custom_branding_icon','spoof_video_streams_client_type'}:expected=expected.upper()
+        if k in {'custom_branding_icon','spoof_video_streams_client_type','change_start_page'}:expected=expected.upper()
         assert preset[stored]==expected,k
 photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'app/src/es/calma/youtube/PhotosUpdateInstaller.kt').read_text()
 assert photos[photos.index('  private fun download('):photos.index('  private fun publishDownloadProgress(')] in adapted

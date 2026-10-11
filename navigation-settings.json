@@ -8,5 +8,12 @@
   "hide_toolbar_create_button": true,
   "hide_toolbar_notification_button": true,
   "hide_community_posts": true,
-  "hide_latest_posts": true
+  "hide_latest_posts": true,
+  "hide_home_button": true,
+  "hide_related_videos": true,
+  "hide_related_videos_overlay": true,
+  "hide_filter_bar_feed_in_related_videos": true,
+  "hide_comments_section": false,
+  "hide_comments_preview_comment": false,
+  "hide_comments_button": false
 }

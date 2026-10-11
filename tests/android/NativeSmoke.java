@@ -64,7 +64,7 @@ public final class NativeSmoke extends Instrumentation {
                 final Throwable[] problem={null};
                 runOnMainSync(()->{try {
                     View view=new View(context);callback.invoke(null,button.getField(name).get(null),view);
-                    check(view.getVisibility()==(name.equals("SHORTS")||name.equals("CREATE")?View.GONE:View.VISIBLE),"navigation "+name);
+                    check(view.getVisibility()==(name.equals("HOME")||name.equals("SHORTS")||name.equals("CREATE")?View.GONE:View.VISIBLE),"navigation "+name);
                 } catch(Throwable error) {problem[0]=error;}});
                 if(problem[0]!=null)throw new AssertionError(problem[0]);
             }
@@ -82,6 +82,28 @@ public final class NativeSmoke extends Instrumentation {
             Class<?> shorts=type("app.revanced.extension.youtube.patches.litho.ShortsFilter");
             Object filter=shorts.getConstructor().newInstance();Method hide=shorts.getDeclaredMethod("shouldHideShortsFeedItems");hide.setAccessible(true);
             check(Boolean.TRUE.equals(hide.invoke(filter)),"Shorts hidden on all feed surfaces");
+            for(String layout:Arrays.asList("revanced_prefs","revanced_prefs_icons","revanced_prefs_icons_bold")) {
+                int id=context.getResources().getIdentifier(layout,"xml",context.getPackageName());
+                android.content.res.XmlResourceParser xml=context.getResources().getXml(id);boolean found=false;
+                for(int event=xml.getEventType();event!=org.xmlpull.v1.XmlPullParser.END_DOCUMENT;event=xml.next()) {
+                    if(event==org.xmlpull.v1.XmlPullParser.START_TAG && "Preference".equals(xml.getName())
+                            && "calma_updates".equals(xml.getAttributeValue("http://schemas.android.com/apk/res/android","key"))) found=true;
+                }
+                xml.close();check(found,"manual updater in "+layout);
+            }
+            for(String action:Arrays.asList(android.content.Intent.ACTION_MAIN,android.content.Intent.ACTION_VIEW)) {
+                android.content.Intent intent=new android.content.Intent(action);
+                call(bootstrap,"launchSubscriptions",new Class[]{android.content.Intent.class},intent);
+                check(intent.getAction().equals(action.equals(android.content.Intent.ACTION_MAIN)?"com.google.android.youtube.action.open.subscriptions":action),"launch action "+action);
+            }
+            Class<?> playerType=type("app.revanced.extension.youtube.shared.PlayerType");
+            for(String state:Arrays.asList("WATCH_WHILE_MAXIMIZED","WATCH_WHILE_MINIMIZED")) {
+                call("es.calma.youtube.nativeapp.CalmaWatch","playerType",new Class[]{Enum.class},playerType.getField(state).get(null));
+                for(String row:Arrays.asList("related_video_with_context.e","compact_video.e","watch_metadata.e","comment_thread.e","video_description.e")) {
+                    boolean removed=(Boolean)call("es.calma.youtube.nativeapp.CalmaWatch","filter",new Class[]{String.class,StringBuilder.class},row,new StringBuilder("root|"+row));
+                    check(removed==(row.startsWith("related_")||(row.startsWith("compact_")&&state.equals("WATCH_WHILE_MAXIMIZED"))),"watch row "+state+" "+row);
+                }
+            }
             // Reinitialization must not reset counters or user choices.
             String key="sb_local_time_saved_number_segments";String before=prefs.getString(key,"");prefs.edit().putString(key,"4000").commit();
             call(bootstrap,"initialize",new Class[]{Context.class},context);check(prefs.getString(key,"").equals("4000"),"preserve accumulated stats");prefs.edit().putString(key,before).commit();

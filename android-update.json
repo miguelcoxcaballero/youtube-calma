@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0",
-  "versionCode": 1557278145,
+  "version": "0.1.1",
+  "versionCode": 1557278146,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.0/YouTube-Calma-0.1.0.apk",
-  "apkSha256": "c64ab706dcd1f42bd1793f7bfb4b3df9dc5483c1830cb4e8bfb66f209dcccb03",
-  "apkSizeBytes": 181928069,
-  "releaseNotes": "Inicio con Suscripciones. Sin Shorts ni Crear. Notificaciones en la barra inferior. Ajustes personalizados y actualizador Inhouse."
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.1/YouTube-Calma-0.1.1.apk",
+  "apkSha256": "f405a742eca8ffe291eca055c6f757fb79d4c58a4dfdb1a58e2e0a1fa8c5278e",
+  "apkSizeBytes": 181936261,
+  "releaseNotes": "Sin pestaña Inicio: abre Suscripciones. Vídeos sin recomendaciones debajo, con descripción y comentarios. Sin Shorts ni Crear. Notificaciones abajo y actualizador en los ajustes."
 }

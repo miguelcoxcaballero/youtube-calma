@@ -22,13 +22,16 @@ with zipfile.ZipFile(build/'patched.apk') as z,zipfile.ZipFile(build/'clean.apk'
         if info.filename in ['assets/dexopt/baseline.prof','assets/dexopt/baseline.profm']:continue
         out.writestr(info,z.read(info))
 run(a.build_tools/'zipalign','-f','-P','16','4',build/'clean.apk',build/'aligned.apk')
-apk=dist/'YouTube-Calma-0.1.0.apk'
+version_source=(ROOT/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()
+version=re.search(r'VERSION = "([^"]+)"',version_source)[1]
+version_code=int(re.search(r'VERSION_CODE = (\d+)',version_source)[1])
+apk=dist/f'YouTube-Calma-{version}.apk'
 env=dict(os.environ);env.setdefault('CALMA_KEYSTORE_PASSWORD','localbuild')
 run(a.build_tools/'apksigner','sign','--ks',a.keystore,'--ks-key-alias','calma','--ks-pass','env:CALMA_KEYSTORE_PASSWORD','--key-pass','env:CALMA_KEYSTORE_PASSWORD','--out',apk,build/'aligned.apk',env=env)
 run(a.build_tools/'apksigner','verify','--verbose','--print-certs',apk)
 run(a.build_tools/'zipalign','-c','-P','16','4',apk)
-manifest={'version':'0.1.0','versionCode':1557278145,'required':True,'apkUrl':'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.0/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Inicio con Suscripciones. Sin Shorts ni Crear. Notificaciones en la barra inferior. Ajustes personalizados y actualizador Inhouse.'}
+manifest={'version':version,'versionCode':version_code,'required':True,'apkUrl':f'https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v{version}/'+apk.name,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'releaseNotes':'Sin pestaña Inicio: abre Suscripciones. Vídeos sin recomendaciones debajo, con descripción y comentarios. Sin Shorts ni Crear. Notificaciones abajo y actualizador en los ajustes.'}
 (ROOT/'android-update.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+'\n')
 (dist/'SHA256SUMS.txt').write_text(sha(apk)+'  '+apk.name+'\n')
-(dist/'build-info.json').write_text(json.dumps({'version':'0.1.0','base':lock,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'patchBundleSha256':sha(build/'patches.jar'),'extensionSha256':sha(build/'classes.dex'),'signedInAccountTested':False},indent=2)+'\n')
+(dist/'build-info.json').write_text(json.dumps({'version':version,'base':lock,'apkSha256':sha(apk),'apkSizeBytes':apk.stat().st_size,'patchBundleSha256':sha(build/'patches.jar'),'extensionSha256':sha(build/'classes.dex'),'signedInAccountTested':False},indent=2)+'\n')
 print(apk)

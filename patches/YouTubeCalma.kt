@@ -20,7 +20,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278145")
+            manifest.setAttribute("android:versionCode", "1557278146")
             val app = manifest.getElementsByTagName("application").item(0) as Element
             fun add(parent: Element, tag: String, attrs: Map<String,String>): Element {
                 val node = xml.createElement(tag)
@@ -32,7 +32,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             add(app,"activity",mapOf("name" to "es.calma.youtube.UpdateActivity", "exported" to "false", "theme" to "@style/CalmaUpdatePopupTheme"))
             val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to "$PKG.fileprovider", "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.0"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.1"))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {
@@ -47,7 +47,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             Resources::class.java.getResourceAsStream("/calma-res/$path")!!.use { input -> target.outputStream().use { input.copyTo(it) } }
         }
         // Keep the manual update entry in the APK's own native settings screen.
-        document("res/xml/revanced_prefs.xml").use { xml ->
+        for (name in listOf("revanced_prefs", "revanced_prefs_icons", "revanced_prefs_icons_bold")) document("res/xml/$name.xml").use { xml ->
             val entry=xml.createElement("Preference")
             entry.setAttribute("android:key","calma_updates")
             entry.setAttribute("android:title","Actualizar aplicación")
@@ -105,5 +105,17 @@ val behaviorPatch = bytecodePatch(name = "YouTube Calma subscriptions and naviga
         }
         val iconRegister = (icon.value as FiveRegisterInstruction).registerD
         toolbar.addInstructions(icon.index,"invoke-static {v$iconRegister, p1}, $EXT->toolbarItem(Ljava/lang/Enum;Landroid/view/MenuItem;)V")
+        method("Lapp/revanced/extension/youtube/patches/ChangeStartPagePatch;", "overrideIntentAction", listOf("Landroid/content/Intent;")).addInstructions(0,
+            "invoke-static {p0}, $EXT->launchSubscriptions(Landroid/content/Intent;)V")
+        method("Lapp/revanced/extension/youtube/patches/PlayerTypeHookPatch;", "setPlayerType", listOf("Ljava/lang/Enum;")).addInstructions(0,
+            "invoke-static {p0}, Les/calma/youtube/nativeapp/CalmaWatch;->playerType(Ljava/lang/Enum;)V")
+        method("Lapp/revanced/extension/shared/patches/litho/LithoFilterPatch;", "isFiltered", listOf("Ljava/lang/String;", "Ljava/lang/String;", "Ljava/lang/String;", "Ljava/lang/StringBuilder;")).addInstructions(0,"""
+            invoke-static {p0, p3}, Les/calma/youtube/nativeapp/CalmaWatch;->filter(Ljava/lang/String;Ljava/lang/StringBuilder;)Z
+            move-result v0
+            if-eqz v0, :calma_original_filter
+            return v0
+            :calma_original_filter
+            nop
+        """.trimIndent())
     }
 }

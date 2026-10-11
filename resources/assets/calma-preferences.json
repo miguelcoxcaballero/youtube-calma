@@ -9,7 +9,7 @@
   "revanced_external_downloader_action_button": true,
   "revanced_hide_cast_button": false,
   "revanced_hide_clip_button": true,
-  "revanced_hide_comments_button": true,
+  "revanced_hide_comments_button": false,
   "revanced_hide_fullscreen_ads": false,
   "revanced_hide_player_flyout_watch_in_vr": true,
   "revanced_hide_remix_button": true,
@@ -44,5 +44,11 @@
   "revanced_hide_toolbar_create_button": true,
   "revanced_hide_toolbar_notification_button": true,
   "revanced_hide_community_posts": true,
-  "revanced_hide_latest_posts": true
+  "revanced_hide_latest_posts": true,
+  "revanced_hide_home_button": true,
+  "revanced_hide_related_videos": true,
+  "revanced_hide_related_videos_overlay": true,
+  "revanced_hide_filter_bar_feed_in_related_videos": true,
+  "revanced_hide_comments_section": false,
+  "revanced_hide_comments_preview_comment": false
 }
