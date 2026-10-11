@@ -73,17 +73,11 @@ try:
     result=required(adb('shell','am','instrument','-w','es.calma.youtube.tests/es.calma.youtube.tests.NativeSmoke',timeout=120),'native-tests')
     assert 'CALMA_NATIVE_TESTS_OK' in result,result
     report['nativeTests']=result
-    # Instrumentation shares the actual signed APK from the private update cache
-    # through the real provider and launches Android's installer with a read grant.
-    # The installer must parse it and reach its update confirmation, not a file
-    # provider error or an invalid-package dialog. Do not accept the installation.
-    time.sleep(4)
-    adb('shell','uiautomator','dump','/sdcard/installer.xml',timeout=30)
-    required(adb('pull','/sdcard/installer.xml',OUT/'installer.xml'),'installer-ui')
-    nodes=list(ET.parse(OUT/'installer.xml').iter('node'))
-    texts=[node.get('text') for node in nodes if node.get('text')]
-    report['installerUi']=texts
-    report['installerPackages']=sorted(set(node.get('package') for node in nodes if node.get('package')))
+    # Capture confirmation before finishInstrumentation force-stops the target
+    # process and provider; the instrumented APK must remain alive during handoff.
+    installer=json.loads(re.search(r'CALMA_INSTALLER_UI (.+)',result)[1])
+    texts=installer['texts'];report['installerUi']=texts
+    report['installerPackages']=installer['packages']
     assert any('packageinstaller' in value for value in report['installerPackages']),report['installerPackages']
     assert any('update' in value.lower() for value in texts) and any('YouTube' in value for value in texts),texts
     report['installerHandoffPassed']=True
@@ -92,7 +86,9 @@ except Exception as error:
     report['passed']=False;report['error']=str(error);(OUT/'error.txt').write_text(traceback.format_exc())
 finally:
     try:
-        (OUT/'final-logcat.txt').write_text(adb('logcat','-b','all','-d').stdout)
+        final_logs=adb('logcat','-b','all','-d').stdout
+        (OUT/'final-logcat.txt').write_text(final_logs)
+        report['installerLogs']=[line for line in final_logs.splitlines() if any(word in line for word in ['PackageInstaller','InstallStart','InstallStaging','InstallInstalling','FileProvider','Permission Denial','CALMA_INSTALLER'])][-80:]
     except Exception:pass
     (OUT/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2),flush=True)
     if emulator is not None:emulator.terminate()

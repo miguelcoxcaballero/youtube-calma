@@ -19,7 +19,13 @@ public final class NativeSmoke extends Instrumentation {
     private Object call(String name,String method,Class<?>[] params,Object... values) throws Exception {
         Method m=type(name).getDeclaredMethod(method,params);m.setAccessible(true);return m.invoke(null,values);
     }
-    private void verifyInstallerHandoff(Context context,android.app.Activity activity) throws Exception {
+    private void collectInstallerUi(android.view.accessibility.AccessibilityNodeInfo node,List<String> texts,Set<String> packages) {
+        if(node==null)return;
+        if(node.getText()!=null)texts.add(node.getText().toString());
+        if(node.getPackageName()!=null)packages.add(node.getPackageName().toString());
+        for(int i=0;i<node.getChildCount();i++)collectInstallerUi(node.getChild(i),texts,packages);
+    }
+    private String verifyInstallerHandoff(Context context,android.app.Activity activity) throws Exception {
         String authority=context.getPackageName()+".update-provider";
         android.content.pm.PackageManager pm=context.getPackageManager();
         Set<String> authorities=new HashSet<>();
@@ -53,6 +59,22 @@ public final class NativeSmoke extends Instrumentation {
         runOnMainSync(()->{try {activity.startActivity(install);}catch(Throwable error){problem[0]=error;}});
         if(problem[0]!=null)throw new AssertionError(problem[0]);
         check(true,"APK handed to Android installer with read permission");
+        // finishInstrumentation force-stops the target process/provider. Observe
+        // the actual installer's confirmation while its source remains alive.
+        long deadline=android.os.SystemClock.uptimeMillis()+25000;
+        List<String> texts=new ArrayList<>();Set<String> packages=new HashSet<>();
+        boolean confirmed=false;
+        while(android.os.SystemClock.uptimeMillis()<deadline) {
+            texts.clear();packages.clear();
+            collectInstallerUi(getUiAutomation().getRootInActiveWindow(),texts,packages);
+            String all=texts.toString().toLowerCase(java.util.Locale.ROOT);
+            if(packages.toString().contains("packageinstaller") && all.contains("youtube") && all.contains("update")) {confirmed=true;break;}
+            android.os.SystemClock.sleep(250);
+        }
+        check(confirmed,"Android installer confirms APK: "+packages+" "+texts);
+        JSONObject evidence=new JSONObject();evidence.put("texts",new org.json.JSONArray(texts));evidence.put("packages",new org.json.JSONArray(packages));
+        getUiAutomation().performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK);
+        return evidence.toString();
     }
     @Override public void onCreate(Bundle args) { super.onCreate(args);start(); }
     @Override public void onStart() {
@@ -143,8 +165,8 @@ public final class NativeSmoke extends Instrumentation {
             String key="sb_local_time_saved_number_segments";String before=prefs.getString(key,"");prefs.edit().putString(key,"4000").commit();
             call(bootstrap,"initialize",new Class[]{Context.class},context);check(prefs.getString(key,"").equals("4000"),"preserve accumulated stats");prefs.edit().putString(key,before).commit();
             check(Boolean.FALSE.equals(call("app.revanced.extension.shared.checks.Check","shouldRun",new Class[]{})),"Manager-only distribution warning disabled");
-            verifyInstallerHandoff(context,activity);
-            result.putString("stream","CALMA_NATIVE_TESTS_OK checks="+checks+"\n");finish(-1,result);
+            String installerUi=verifyInstallerHandoff(context,activity);
+            result.putString("stream","CALMA_INSTALLER_UI "+installerUi+"\nCALMA_NATIVE_TESTS_OK checks="+checks+"\n");finish(-1,result);
         } catch(Throwable error) {
             StringWriter text=new StringWriter();error.printStackTrace(new PrintWriter(text));result.putString("stream",text.toString());finish(0,result);
         }
