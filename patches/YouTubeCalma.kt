@@ -4,6 +4,8 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
@@ -20,7 +22,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278147")
+            manifest.setAttribute("android:versionCode", "1557278148")
             val app = manifest.getElementsByTagName("application").item(0) as Element
             fun add(parent: Element, tag: String, attrs: Map<String,String>): Element {
                 val node = xml.createElement(tag)
@@ -30,6 +32,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             add(manifest, "uses-permission", mapOf("name" to "android.permission.REQUEST_INSTALL_PACKAGES"))
             add(app,"activity",mapOf("name" to "es.calma.youtube.UpdateActivity", "exported" to "false", "theme" to "@style/CalmaUpdatePopupTheme"))
+            add(app,"activity",mapOf("name" to "es.calma.youtube.nativeapp.CalmaSettingsActivity", "exported" to "false", "theme" to "@style/CalmaSettingsTheme"))
             // YouTube already owns .fileprovider. Keep Photos' separate update
             // authority so PackageManager resolves our cache paths, not theirs.
             val authority="$PKG.update-provider"
@@ -39,7 +42,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to authority, "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.2"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.3"))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {
@@ -49,9 +52,26 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
                 if (name.startsWith("$PKG.revanced_")) alias.setAttribute("android:enabled", (name == "$PKG.revanced_original_1").toString())
             }
         }
-        for (path in listOf("assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/android-update.css", "res/xml/calma_update_file_paths.xml")) {
+        for (path in listOf("assets/inhouse-logo.png", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/android-update.css", "res/xml/calma_update_file_paths.xml")) {
             val target=get(path);target.parentFile.mkdirs()
             Resources::class.java.getResourceAsStream("/calma-res/$path")!!.use { input -> target.outputStream().use { input.copyTo(it) } }
+        }
+        // Insert beside the real ReVanced entry in both native settings layouts.
+        for(name in listOf("settings_fragment", "settings_fragment_cairo")) document("res/xml/$name.xml").use { xml ->
+            val intents=xml.getElementsByTagName("intent")
+            val original=(0 until intents.length).map { intents.item(it) as Element }
+                .single { it.getAttribute("android:data")=="revanced_settings_intent" }.parentNode as Element
+            val entry=xml.createElement("Preference")
+            for(attribute in listOf("android:layout","app:iconSpaceReserved")) {
+                if(original.hasAttribute(attribute))entry.setAttribute(attribute,original.getAttribute(attribute))
+            }
+            entry.setAttribute("android:key","inhouse_youtube_settings")
+            entry.setAttribute("android:title","Inhouse YouTube settings")
+            val intent=xml.createElement("intent")
+            intent.setAttribute("android:targetPackage",PKG)
+            intent.setAttribute("android:targetClass","es.calma.youtube.nativeapp.CalmaSettingsActivity")
+            entry.appendChild(intent)
+            original.parentNode.insertBefore(entry,original.nextSibling)
         }
         // Keep the manual update entry in the APK's own native settings screen.
         for (name in listOf("revanced_prefs", "revanced_prefs_icons", "revanced_prefs_icons_bold")) document("res/xml/$name.xml").use { xml ->
@@ -90,6 +110,20 @@ val behaviorPatch = bytecodePatch(name = "YouTube Calma subscriptions and naviga
             mutableClassDefBy(type).methods.single { it.name == name && it.parameterTypes.map { p -> p.toString() } == parameters }
         method("Lapp/revanced/extension/shared/Utils;", "setContext", listOf("Landroid/content/Context;")).addInstructions(0,
             "invoke-static/range {p0 .. p0}, $EXT->initialize(Landroid/content/Context;)V")
+        for((name,params) in listOf(
+            "navigationTabCreated" to listOf("Lapp/revanced/extension/youtube/shared/NavigationBar\$NavigationButton;","Landroid/view/View;"),
+            "switchCreateWithNotificationButton" to listOf("Ljava/lang/String;")
+        )) {
+            val target=method("Lapp/revanced/extension/youtube/patches/NavigationBarPatch;",name,params)
+            check(target.implementation!!.registerCount > params.size)
+            val disabled=if(name=="navigationTabCreated") "return-void" else "return-object p0"
+            target.addInstructionsWithLabels(0,"""
+                invoke-static {}, Les/calma/youtube/nativeapp/CalmaSwitch;->enabled()Z
+                move-result v0
+                if-nez v0, :inhouse_enabled
+                $disabled
+            """.trimIndent(),ExternalLabel("inhouse_enabled",target.implementation!!.instructions.first()))
+        }
         val home = method("Lehy;", "K", listOf("Laogf;"))
         val hook = home.implementation!!.instructions.withIndex().single { (_, ins) ->
             val ref=(ins as? ReferenceInstruction)?.reference as? MethodReference

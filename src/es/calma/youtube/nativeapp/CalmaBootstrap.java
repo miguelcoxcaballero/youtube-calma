@@ -19,6 +19,7 @@ public final class CalmaBootstrap {
 
     public static synchronized void initialize(Context context) {
         if (context == null) return;
+        CalmaSwitch.initialize(context);
         if (context instanceof Activity) launchSubscriptions(((Activity) context).getIntent());
         if (!seeded) {
             SharedPreferences preferences = context.getSharedPreferences("revanced_prefs", 0);
@@ -88,16 +89,23 @@ public final class CalmaBootstrap {
     }
 
     public static String homeBrowseId(String original) {
+        if (!CalmaSwitch.enabled()) {
+            try {
+                return (String)Class.forName("app.revanced.extension.youtube.patches.ChangeStartPagePatch")
+                    .getMethod("overrideBrowseId",String.class).invoke(null,original);
+            } catch (ReflectiveOperationException error) { return original; }
+        }
         return "FEwhat_to_watch".equals(original) ? "FEsubscriptions" : original;
     }
 
     public static void launchSubscriptions(Intent intent) {
-        if (intent != null && Intent.ACTION_MAIN.equals(intent.getAction())) {
+        if (CalmaSwitch.enabled() && intent != null && Intent.ACTION_MAIN.equals(intent.getAction())) {
             intent.setAction("com.google.android.youtube.action.open.subscriptions");
         }
     }
 
     public static void toolbarItem(Enum<?> icon, android.view.MenuItem item) {
+        if (!CalmaSwitch.enabled()) return;
         if (icon == null || item == null) return;
         String name = icon.name();
         if (name.equals("TAB_ACTIVITY") || name.equals("TAB_ACTIVITY_CAIRO")

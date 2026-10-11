@@ -12,6 +12,7 @@ public final class CalmaWatch {
     }
 
     public static boolean filter(String identifier, StringBuilder path) {
+        if (!CalmaSwitch.enabled()) return false;
         if (identifier == null) return false;
         // Specific recommendation components are safe to remove even while the
         // player is transitioning. Metadata, description and comments stay native.

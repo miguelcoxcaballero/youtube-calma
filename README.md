@@ -2,7 +2,7 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
-[Descargar APK 0.1.2](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.2/YouTube-Calma-0.1.2.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.2)
+[Descargar APK 0.1.3](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.3/YouTube-Calma-0.1.3.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.3)
 
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
@@ -10,6 +10,14 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 - La barra inferior solicita el botón nativo de Notificaciones; la campana y Crear se ocultan en la barra superior.
 - El preset de [settings.json](settings.json), con las peticiones posteriores de [navigation-settings.json](navigation-settings.json), se aplica antes de inicializar los ajustes de ReVanced. Las actualizaciones conservan las elecciones posteriores y los contadores de SponsorBlock.
 - El actualizador reutiliza Inhouse Read e Inhouse Photos. La comprobación automática se inicia al abrir la app; la manual está en los ajustes de ReVanced.
+
+## Ajustes Inhouse (0.1.3)
+
+En los ajustes nativos, justo debajo de ReVanced, aparece **Inhouse YouTube settings**. El interruptor activa o desactiva las modificaciones de contenido, navegación y el preset de esta personalización; aplica el cambio reiniciando la app. Los ajustes y el actualizador permanecen accesibles.
+
+Se guardan por separado las preferencias con Inhouse activado y desactivado. Al actualizar desde versiones que no guardaban la configuración anterior a Calma, la primera desactivación utiliza los valores originales del APK ReVanced proporcionado. No se cambian la cuenta, las estadísticas acumuladas ni la identidad de la aplicación.
+
+El pie muestra el [logo original de Inhouse Read](https://github.com/miguelcoxcaballero/inhouse-read/blob/main/public/icons/inhouse-read-logo.png), versión, fecha de publicación y enlace a este repositorio.
 
 ## Actualizador corregido en 0.1.2
 
@@ -29,7 +37,7 @@ Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la cl
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.2` y Android `versionCode=1557278147`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.3` y Android `versionCode=1557278148`.
 
 La 0.1.2 ha superado 159 comprobaciones por versión en emuladores Android 14, 15 y 16, incluida la apertura real del instalador desde `cache/updates/` hasta su confirmación. [Resultados y alcance](validation/0.1.2.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38136649010). La confirmación de instalación se cancela en las pruebas.
 

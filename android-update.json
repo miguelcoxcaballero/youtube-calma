@@ -1,9 +1,9 @@
 {
-  "version": "0.1.2",
-  "versionCode": 1557278147,
+  "version": "0.1.3",
+  "versionCode": 1557278148,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.2/YouTube-Calma-0.1.2.apk",
-  "apkSha256": "856f625316bdcb0ebffb12674113150c52c1da8c803632aebe80f26245da1816",
-  "apkSizeBytes": 181936261,
-  "releaseNotes": "Corregida la apertura del instalador tras descargar una actualización. Esta reparación debe instalarse manualmente desde GitHub si tienes la 0.1.0 o 0.1.1. Conserva los datos y los cambios de Suscripciones, navegación y vídeos."
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.3/YouTube-Calma-0.1.3.apk",
+  "apkSha256": "dcb59e820b9f80d9c795c22ece595c8e8bef94485be72bc217d418f2c83f55ff",
+  "apkSizeBytes": 181952714,
+  "releaseNotes": "Inhouse YouTube settings debajo de ReVanced: interruptor general con perfiles conservados. Logo Inhouse, versión, fecha de publicación y GitHub al pie."
 }
