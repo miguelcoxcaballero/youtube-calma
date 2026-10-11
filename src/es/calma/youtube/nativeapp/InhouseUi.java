@@ -23,8 +23,8 @@ public final class InhouseUi {
         ImageView logo=new ImageView(activity);logo.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         try(java.io.InputStream input=activity.getAssets().open("inhouse-logo.png")) { logo.setImageBitmap(BitmapFactory.decodeStream(input)); }
         catch(java.io.IOException ignored) { }
-        GradientDrawable outline=new GradientDrawable();outline.setColor(0xfff5f5f1);outline.setCornerRadius(dp(activity,8));
-        logo.setBackground(outline);logo.setClipToOutline(true);logo.setAlpha(.8f);
+        GradientDrawable outline=new GradientDrawable();outline.setColor(0xff000000);outline.setCornerRadius(dp(activity,8));
+        logo.setBackground(outline);logo.setClipToOutline(true);logo.setAlpha(1f);
         brand.addView(logo,new LinearLayout.LayoutParams(dp(activity,28),dp(activity,28)));
         TextView name=new TextView(activity);name.setText("Inhouse");name.setTextSize(14);name.setTextColor(muted);name.setTypeface(Typeface.create("sans-serif-medium",0));name.setPadding(dp(activity,8),0,0,0);
         brand.addView(name);footer.addView(brand);

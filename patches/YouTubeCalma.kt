@@ -22,8 +22,22 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
         check(packageMetadata.versionCode == "1557278144")
         document("AndroidManifest.xml").use { xml ->
             val manifest = xml.documentElement
-            manifest.setAttribute("android:versionCode", "1557278148")
+            manifest.setAttribute("android:versionCode", "1557278149")
             val app = manifest.getElementsByTagName("application").item(0) as Element
+            app.setAttribute("android:icon", "@mipmap/inhouse_launcher")
+            app.setAttribute("android:roundIcon", "@mipmap/inhouse_launcher")
+            // Cover every launcher alias, including the alias already enabled on upgrades.
+            for (tag in listOf("activity", "activity-alias")) {
+                val entries = app.getElementsByTagName(tag)
+                for (i in 0 until entries.length) {
+                    val entry = entries.item(i) as Element
+                    val categories = entry.getElementsByTagName("category")
+                    if ((0 until categories.length).any { (categories.item(it) as Element).getAttribute("android:name") == "android.intent.category.LAUNCHER" }) {
+                        entry.setAttribute("android:icon", "@mipmap/inhouse_launcher")
+                        entry.setAttribute("android:roundIcon", "@mipmap/inhouse_launcher")
+                    }
+                }
+            }
             fun add(parent: Element, tag: String, attrs: Map<String,String>): Element {
                 val node = xml.createElement(tag)
                 attrs.forEach { (key, value) -> node.setAttribute("android:$key", value) }
@@ -42,7 +56,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             val provider=add(app,"provider",mapOf("name" to "es.calma.vendor.androidx.core.content.FileProvider", "authorities" to authority, "exported" to "false", "grantUriPermissions" to "true"))
             add(provider,"meta-data",mapOf("name" to "android.support.FILE_PROVIDER_PATHS", "resource" to "@xml/calma_update_file_paths"))
-            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.3"))
+            add(app,"meta-data",mapOf("name" to "es.calma.version", "value" to "0.1.4"))
             // Enable the requested original YouTube icon/name before the first launch.
             val aliases = app.getElementsByTagName("activity-alias")
             for (i in 0 until aliases.length) {
@@ -52,7 +66,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
                 if (name.startsWith("$PKG.revanced_")) alias.setAttribute("android:enabled", (name == "$PKG.revanced_original_1").toString())
             }
         }
-        for (path in listOf("assets/inhouse-logo.png", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/android-update.css", "res/xml/calma_update_file_paths.xml")) {
+        for (path in listOf("assets/inhouse-logo.png", "res/drawable-nodpi/inhouse_launcher_art.png", "res/drawable/inhouse_launcher_foreground.xml", "res/drawable/inhouse_launcher_background.xml", "res/mipmap-anydpi/inhouse_launcher.xml", "res/mipmap-anydpi-v26/inhouse_launcher.xml", "assets/calma-preferences.json", "assets/updates/index.html", "assets/updates/updater.js", "assets/updates/android-update.css", "res/xml/calma_update_file_paths.xml")) {
             val target=get(path);target.parentFile.mkdirs()
             Resources::class.java.getResourceAsStream("/calma-res/$path")!!.use { input -> target.outputStream().use { input.copyTo(it) } }
         }
@@ -97,6 +111,10 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             it.createPublicId("style","CalmaUpdatePopupTheme")
             it.createPublicId("style","CalmaSettingsTheme")
             it.createPublicId("xml","calma_update_file_paths")
+            it.createPublicId("drawable", "inhouse_launcher_art")
+            it.createPublicId("drawable", "inhouse_launcher_foreground")
+            it.createPublicId("drawable", "inhouse_launcher_background")
+            it.createPublicId("mipmap", "inhouse_launcher")
         }
     }
 }

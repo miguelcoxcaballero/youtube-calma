@@ -124,6 +124,22 @@ public final class NativeSmoke extends Instrumentation {
         if(view instanceof android.widget.TextView)texts.add(((android.widget.TextView)view).getText().toString());
         if(view instanceof android.view.ViewGroup)for(int i=0;i<((android.view.ViewGroup)view).getChildCount();i++)collectViews(((android.view.ViewGroup)view).getChildAt(i),texts);
     }
+    private String brandingIcon(android.content.Context context) throws Exception {
+        android.content.pm.PackageManager pm=context.getPackageManager();
+        android.content.Intent launch=pm.getLaunchIntentForPackage(context.getPackageName());
+        android.graphics.drawable.Drawable icon=pm.getActivityIcon(launch);
+        check(icon instanceof android.graphics.drawable.AdaptiveIconDrawable,"Launcher resolves the adaptive Inhouse icon");
+        android.content.pm.ActivityInfo launcher=pm.getActivityInfo(launch.getComponent(),0);
+        check("inhouse_launcher".equals(context.getResources().getResourceEntryName(launcher.getIconResource())),"Enabled launcher alias uses Inhouse artwork");
+        android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(192,192,android.graphics.Bitmap.Config.ARGB_8888);
+        icon.setBounds(0,0,192,192);icon.draw(new android.graphics.Canvas(bitmap));
+        java.io.ByteArrayOutputStream output=new java.io.ByteArrayOutputStream();bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,output);bitmap.recycle();
+        android.graphics.Bitmap logo;
+        try(java.io.InputStream input=context.getAssets().open("inhouse-logo.png")){logo=android.graphics.BitmapFactory.decodeStream(input);}
+        check(logo!=null,"Interior logo decodes");
+        int corner=logo.getPixel(0,0);check(android.graphics.Color.red(corner)<12 && android.graphics.Color.green(corner)<12 && android.graphics.Color.blue(corner)<12,"Interior Inhouse logo has a black background");logo.recycle();
+        return android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP);
+    }
     @Override public void onStart() {
         Bundle result=new Bundle();
         try {
@@ -139,6 +155,7 @@ public final class NativeSmoke extends Instrumentation {
             SharedPreferences prefs=context.getSharedPreferences("revanced_prefs",0);
             if(phase!=null) { profilePhase(context,prefs,result);return; }
             settingsEntry(context);
+                result.putString("inhouseIconPng",brandingIcon(context));
             check(prefs.getBoolean("calma_preset_v1",false),"preset must load during Application.onCreate");
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
             try(InputStream in=context.getAssets().open("calma-preferences.json")) { byte[] b=new byte[4096];for(int n;(n=in.read(b))!=-1;)bytes.write(b,0,n); }
