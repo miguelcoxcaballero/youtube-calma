@@ -1,9 +1,9 @@
 {
-  "version": "0.1.9",
-  "versionCode": 1557278154,
+  "version": "0.1.10",
+  "versionCode": 1557278155,
   "required": true,
-  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.9/YouTube-Calma-0.1.9.apk",
-  "apkSha256": "08564aefb83b4d8335a70f3e23f2497484eef332ae223642044278e7e5b84861",
-  "apkSizeBytes": 183346081,
-  "releaseNotes": "Reordered navigation and aligned settings icon."
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.10/YouTube-Calma-0.1.10.apk",
+  "apkSha256": "a9168c62f233d2b5012152de11b63c0918e516d9b1c3f426d85372577ff3bda1",
+  "apkSizeBytes": 183350177,
+  "releaseNotes": "Fixed Inhouse settings icon."
 }

@@ -2,15 +2,24 @@
   "schemaVersion": 1,
   "channel": "A",
   "latest": {
-    "version": "0.1.9",
-    "versionCode": 1557278154,
-    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.9/YouTube-Calma-0.1.9.apk",
-    "apkSha256": "08564aefb83b4d8335a70f3e23f2497484eef332ae223642044278e7e5b84861",
-    "apkSizeBytes": 183346081,
-    "changelog": "Reordered navigation and aligned settings icon.",
-    "releasedAt": "2026-10-11T17:33:41+00:00"
+    "version": "0.1.10",
+    "versionCode": 1557278155,
+    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.10/YouTube-Calma-0.1.10.apk",
+    "apkSha256": "a9168c62f233d2b5012152de11b63c0918e516d9b1c3f426d85372577ff3bda1",
+    "apkSizeBytes": 183350177,
+    "changelog": "Fixed Inhouse settings icon.",
+    "releasedAt": "2026-10-11T19:27:20+00:00"
   },
   "releases": [
+    {
+      "version": "0.1.10",
+      "versionCode": 1557278155,
+      "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.10/YouTube-Calma-0.1.10.apk",
+      "apkSha256": "a9168c62f233d2b5012152de11b63c0918e516d9b1c3f426d85372577ff3bda1",
+      "apkSizeBytes": 183350177,
+      "changelog": "Fixed Inhouse settings icon.",
+      "releasedAt": "2026-10-11T19:27:20+00:00"
+    },
     {
       "version": "0.1.9",
       "versionCode": 1557278154,
