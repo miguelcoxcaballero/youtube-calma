@@ -1,11 +1,17 @@
 
 
+
+# APK release identity (regression in 0.1.6)
+
+`CalmaBuild.java` is the sole release version/code source. The patch compiler generates its constants; never put an independent release code in `YouTubeCalma.kt`. Before advertising an update, decode the SIGNED APK and verify its Android versionCode and `es.calma.version` metadata against the catalog. `adb install -r` can accept the same code and is insufficient: require a strictly greater actual code than the previous APK. Run `tests/artifact.py` and the Android upgrade-from-0.1.5 check. Keep the shared installer's strict version, hash, package and signature checks unchanged.
+
 # Inhouse services updater — mandatory shared updater policy
 
 Canonical repository: https://github.com/miguelcoxcaballero/inhouse-services-updater
 
 Every AI/developer working in this app must read this section even without opening the updater repository:
 
+- **B is the default update channel.** A requires an English development warning, explicit acknowledgement and slide confirmation. Legacy implicit A preferences migrate to B; choosing B clears A consent. This does not authorize publishing or promoting a B release.
 - All new changes and automatic releases go to **A** (rapid changes/testing).
 - **B** (reviewed releases) requires the user's **explicit request**. Tests passing is not permission to promote.
 - Every release needs a tiny changelog: preferably 2–10 words, maximum 120 characters.
@@ -17,7 +23,3 @@ Every AI/developer working in this app must read this section even without openi
 - See the central `AGENTS.md`, `docs/PROTOCOL.md` and `tools/catalog.py` before changing publication logic.
 
 This section supersedes older instructions that mandate blocking update gates, independently copied updaters, or unconditional latest/stable publication. Existing signature and integrity requirements remain in force.
-
-# APK release identity (regression in 0.1.6)
-
-`CalmaBuild.java` is the sole release version/code source. The patch compiler generates its constants; never put an independent release code in `YouTubeCalma.kt`. Before advertising an update, decode the SIGNED APK and verify its Android versionCode and `es.calma.version` metadata against the catalog. `adb install -r` can accept the same code and is insufficient: require a strictly greater actual code than the previous APK. Run `tests/artifact.py` and the Android upgrade-from-0.1.5 check. Keep the shared installer's strict version, hash, package and signature checks unchanged.

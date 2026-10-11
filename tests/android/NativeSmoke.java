@@ -319,14 +319,19 @@ final class SharedUpdateSmoke {
             while(android.os.SystemClock.uptimeMillis()<deadline){if("true".equals(eval(test,web,"Boolean(window.InhouseUpdater && document.querySelector('.isu-channels'))"))){ready=true;break;}Thread.sleep(200);}
             if(!ready)throw new AssertionError("Bundled updater settings did not load");
             if(!org.json.JSONObject.quote(version).equals(eval(test,web,"InhouseNative.getAppVersion()")))throw new AssertionError("Installed version mismatch");
+            if(!"\"B\"".equals(eval(test,web,"InhouseUpdater.getState().channel")))throw new AssertionError("Legacy A must migrate to B");
             eval(test,web,"document.querySelectorAll('.isu-channels button')[1].click()");
-            if(!"B".equals(new org.json.JSONObject(prefs.getString("state","{}")).getString("channel")))throw new AssertionError("Channel B did not persist through native bridge");
-            eval(test,web,"document.querySelectorAll('.isu-channels button')[0].click()");
+            if(!"\"B\"".equals(eval(test,web,"InhouseUpdater.getState().channel")))throw new AssertionError("Warning must not opt in");
+            eval(test,web,"document.querySelector('.isu-primary').click();var slider=document.querySelector('input[type=range]');slider.value='80';slider.dispatchEvent(new Event('change'))");
+            if(!"\"B\"".equals(eval(test,web,"InhouseUpdater.getState().channel")))throw new AssertionError("Partial slide must keep B");
+            eval(test,web,"var slider=document.querySelector('input[type=range]');slider.value='100';slider.dispatchEvent(new Event('change'))");
+            org.json.JSONObject saved=new org.json.JSONObject(prefs.getString("state","{}"));
+            if(!"A".equals(saved.getString("channel"))||saved.getInt("developmentConsent")!=1)throw new AssertionError("Confirmed A consent did not persist");
             long code=context.getPackageManager().getPackageInfo(context.getPackageName(),0).getLongVersionCode()+1;
             org.json.JSONObject release=new org.json.JSONObject().put("version","99.0.0").put("versionCode",code).put("apkUrl","https://github.com/"+repo+"/releases/download/test/update.apk").put("apkSha256",String.format("%064d",0)).put("apkSizeBytes",1).put("releasedAt","2026-10-11T00:00:00Z").put("changelog","Prueba del aviso.");
             org.json.JSONObject catalog=new org.json.JSONObject().put("schemaVersion",1).put("channel","A").put("latest",release).put("releases",new org.json.JSONArray().put(release));
             if(!"true".equals(eval(test,web,"InhouseUpdater.offerPending("+catalog+")")))throw new AssertionError("Optional update popup missing");
-            String labels=eval(test,web,"document.body.innerText");if(!labels.contains("Recordármelo")||!labels.contains("99.0.0")||!labels.contains(version))throw new AssertionError("Popup labels missing: "+labels);
+            String labels=eval(test,web,"document.body.innerText");if(!labels.contains("Remind me later")||!labels.contains("99.0.0")||!labels.contains(version))throw new AssertionError("Popup labels missing: "+labels);
             eval(test,web,"InhouseUpdater.close(true)");
             long delay=new org.json.JSONObject(prefs.getString("state","{}")).getJSONObject("snooze").getLong("A")-System.currentTimeMillis();
             if(delay<14L*86400000-10000||delay>14L*86400000)throw new AssertionError("Reminder is not fourteen days");
