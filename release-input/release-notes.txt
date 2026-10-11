@@ -1,0 +1,3 @@
+Updated Inhouse services updater.
+
+New shared update and download interface. Published to B at the user's request; also available on A. Install over the existing app to keep your data.

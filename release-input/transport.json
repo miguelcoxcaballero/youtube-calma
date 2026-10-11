@@ -1,0 +1,28 @@
+{
+  "sourceCommit": "25620367d50ece42defee1992b109f97b38c9f97",
+  "parts": [
+    {
+      "name": "YouTube-Calma-0.1.11.apk.part000",
+      "bytes": 50331648,
+      "sha256": "682ff6d341c7a1499b698473e078f44ff098f63fdf9edd98dcacc5e2a86300dd"
+    },
+    {
+      "name": "YouTube-Calma-0.1.11.apk.part001",
+      "bytes": 50331648,
+      "sha256": "6226ef2852fd2d7825fb7f4f38a07902535ab3abc490a64b3ae8b7c18e1057b7"
+    },
+    {
+      "name": "YouTube-Calma-0.1.11.apk.part002",
+      "bytes": 50331648,
+      "sha256": "82e2773c84266e23881ac2e966954b3338ee395ec976ffa51151341ae269ca3c"
+    },
+    {
+      "name": "YouTube-Calma-0.1.11.apk.part003",
+      "bytes": 32359329,
+      "sha256": "9e3a3c652976c19af15512746c92744b109fc5f9bee541a5142d9407be98bba9"
+    }
+  ],
+  "version": "0.1.11",
+  "apkSha256": "9e8dbc5dbfd10b22c8960a609cb049001762ce2c97e82a44bf1b1d83682910e3",
+  "apkSizeBytes": 183354273
+}
