@@ -1,7 +1,10 @@
 base/*.apk
 base/classes.txt
 build/
-tools/
+/tools
 *.p12
 *.jks
 __pycache__/
+base/*.txt
+runtime-input/
+release-input/

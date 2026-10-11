@@ -1,0 +1,37 @@
+"""Check provenance, preset, ABI preservation, native hooks and release metadata."""
+import hashlib,importlib.util,json,re,subprocess,zipfile
+from pathlib import Path
+R=Path(__file__).resolve().parents[1]
+m=json.loads((R/'android-update.json').read_text());apk=R/'build/dist'/('YouTube-Calma-'+m['version']+'.apk')
+assert hashlib.file_digest(apk.open('rb'),'sha256').hexdigest()==m['apkSha256']
+assert apk.stat().st_size==m['apkSizeBytes'] and m['required'] is True
+spec=importlib.util.spec_from_file_location('compiler',R/'scripts/compile-extension.py');compiler=importlib.util.module_from_spec(spec);spec.loader.exec_module(compiler)
+with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as base:
+    classes=set();old=set();strings=b''
+    for n in z.namelist():
+        if re.fullmatch('classes[0-9]*.dex',n):
+            data=z.read(n);defined=compiler.dex_classes(data);assert not classes&defined;classes.update(defined);strings+=data
+    for n in base.namelist():
+        if n.startswith('lib/'):assert base.read(n)==z.read(n),n
+        if re.fullmatch('classes[0-9]*.dex',n):old.update(compiler.dex_classes(base.read(n)))
+    assert old<=classes,'Original classes lost'
+    assert 'Les/calma/youtube/nativeapp/CalmaBootstrap;' in classes
+    assert b'CalmaBuild' in strings and b'0.1.0' in strings
+    for n in ['updater.js','index.html','android-update.css']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
+    assert z.read('assets/calma-preferences.json')==(R/'resources/assets/calma-preferences.json').read_bytes()
+    supplied=json.loads((R/'settings.json').read_text());preset=json.loads(z.read('assets/calma-preferences.json'))
+    for k,v in supplied.items():
+        stored=k if k.startswith('sb_') else 'revanced_'+k
+        expected=v if isinstance(v,bool) else str(v)
+        if k in {'custom_branding_icon','spoof_video_streams_client_type'}:expected=expected.upper()
+        assert preset[stored]==expected,k
+photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'app/src/es/calma/youtube/PhotosUpdateInstaller.kt').read_text()
+assert photos[photos.index('  private fun download('):photos.index('  private fun publishDownloadProgress(')] in adapted
+assert photos[photos.index('  private fun validateUrl('):] in adapted
+install=photos[photos.index('  private fun installUpdate('):photos.index('  private fun download(')].replace('private fun installUpdate(', 'fun installUpdate(').replace('MethodChannel.Result','Result').replace('.update-provider','.fileprovider')
+assert install in adapted
+assert (R/'vendor/inhouse-read/android-update.css').read_bytes()==(R/'app/assets/updates/android-update.css').read_bytes()
+source=(R/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()
+assert re.search(r'VERSION = "([^"]+)"',source)[1]==m['version']
+assert int(re.search(r'VERSION_CODE = (\d+)',source)[1])==m['versionCode']
+print('PASS: exact preset, original native libraries/classes retained, updater assets, literal Photos installer, Read CSS, release hash/size/version')
