@@ -19,6 +19,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
+import android.webkit.WebView;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
@@ -150,6 +151,20 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                 }
             } finally { if (bound) context.unbindService(connection); }
             if ("true".equals(arguments.getString("openLogin"))) {
+                AtomicReference<Throwable> webViewFailure = new AtomicReference<>();
+                runOnMainSync(() -> {
+                    try {
+                        // Acquire the main process's real WebView data-directory lock
+                        // without loading any URL. The backend's later login WebView
+                        // must work concurrently using its stable directory suffix.
+                        WebView probe = new WebView(context);
+                        probe.destroy();
+                    } catch (Throwable error) { webViewFailure.set(error); }
+                });
+                if (webViewFailure.get() != null) {
+                    report.put("mainWebViewFailureClass", webViewFailure.get().getClass().getName());
+                }
+                require("main process initializes WebView before backend login", webViewFailure.get() == null);
                 context.startActivity(new Intent().setComponent(new ComponentName(HOST,
                         "org.microg.gms.auth.login.LoginActivity")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         .putExtra("tmpl", "new_account"));

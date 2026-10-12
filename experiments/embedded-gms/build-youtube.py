@@ -194,6 +194,14 @@ def protected_state() -> dict[str, str]:
     return {str(path.relative_to(ROOT)): digest(path) for path in files if path.is_file()}
 
 
+def integration_sources() -> dict[str, str]:
+    files = [HERE / name for name in ('build-youtube.py', 'prepare-host.py', 'prepare-backend.py', 'upstream.lock.json')]
+    files.extend(ROOT / 'scripts' / name for name in ('compile-extension.py', 'release_metadata.py'))
+    for directory in (HERE / 'youtube-runtime', HERE / 'patches', ROOT / 'patches', ROOT / 'src'):
+        files.extend(path for path in directory.rglob('*') if path.is_file())
+    return {str(path.relative_to(ROOT)): digest(path) for path in sorted(files)}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gms-apk', type=Path, required=True, help='Original hash-pinned upstream GmsCore APK')
@@ -249,6 +257,7 @@ def main() -> None:
 
 
 def build(args, output: Path) -> None:
+    sources_before = integration_sources()
     work = output / 'work'
     if work.exists(): shutil.rmtree(work)
     work.mkdir()
@@ -286,10 +295,10 @@ def build(args, output: Path) -> None:
         'signedInAccountTested': False, 'releaseCatalogChanged': False,
         'instrumentationIncluded': args.instrumentation,
         'debugSigning': args.debug_signing,
-        'sourceHashes': {str(path.relative_to(ROOT)): digest(path)
-                         for parent in (HERE / 'youtube-runtime', ROOT / 'patches')
-                         for path in sorted(parent.rglob('*')) if path.is_file()},
+        'sourceHashes': sources_before,
     }
+    if integration_sources() != sources_before:
+        raise RuntimeError('Integration sources changed during compilation; rebuild from a stable snapshot')
     if args.prepare_only:
         evidence['prepareOnly'] = True
         (output / 'build-report.json').write_text(json.dumps(evidence, indent=2) + '\n')
@@ -303,7 +312,12 @@ def build(args, output: Path) -> None:
         for info in source.infolist():
             if info.filename.startswith('META-INF/') and re.search(r'\.(SF|RSA|DSA|EC|MF)$', info.filename): continue
             if info.filename in ('assets/dexopt/baseline.prof', 'assets/dexopt/baseline.profm'): continue
-            destination.writestr(info, source.read(info))
+            # The backend is already a compressed APK. Deflating that archive
+            # again saves about 1% but adds work during cold provider startup.
+            # Keep both verified executable assets directly readable by Android.
+            compression = zipfile.ZIP_STORED if info.filename in (
+                'assets/embedded/gmscore.apk', 'assets/embedded/bridge.dex') else info.compress_type
+            destination.writestr(info, source.read(info), compress_type=compression)
     aligned = work / 'aligned.apk'
     run(args.build_tools / 'zipalign', '-f', '-P', '16', '4', clean, aligned)
     apk = output / f'YouTube-Calma-{version}-embedded-EXPERIMENTAL.apk'
@@ -341,6 +355,10 @@ def build(args, output: Path) -> None:
                                ('assets/embedded/bridge.dex', digest(bridge))):
             if hashlib.sha256(archive.read(name)).hexdigest() != expected:
                 raise RuntimeError('Packaged embedded asset differs: ' + name)
+            if archive.getinfo(name).compress_type != zipfile.ZIP_STORED:
+                raise RuntimeError('Embedded executable asset must not be double-compressed: ' + name)
+    if integration_sources() != sources_before:
+        raise RuntimeError('Integration sources changed during APK assembly; rebuild from a stable snapshot')
     # Publish this local candidate path only after every structural check passes.
     signed.replace(apk)
     evidence.update({'apk': apk.name, 'apkSha256': digest(apk), 'apkSizeBytes': apk.stat().st_size,

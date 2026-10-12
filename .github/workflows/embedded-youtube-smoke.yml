@@ -60,6 +60,10 @@ jobs:
             --gms-apk build/embedded-youtube-input/gmscore.apk \
             --morphe tools/morphe.jar \
             --instrumentation --debug-signing
+      - name: Check manifest boundaries and pinned native inheritance
+        run: |
+          python3 -m unittest discover -s tests -p 'test_embedded*.py' -v
+          python3 scripts/test-embedded-inheritance.py --morphe tools/morphe.jar
       - name: Share the exact test APK and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
