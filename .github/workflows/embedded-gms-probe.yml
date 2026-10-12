@@ -1,0 +1,35 @@
+name: Embedded microG component probe
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/embedded-gms-prototype']
+permissions:
+  contents: read
+jobs:
+  components:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [35, 36]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Prepare platform and build tools
+        run: sdkmanager 'platforms;android-35' 'build-tools;36.0.0'
+      - name: Build isolated debug probe (no release key)
+        run: python3 experiments/embedded-gms/build-harness.py
+      - name: Check embedded components without installed microG
+        run: python3 experiments/embedded-gms/run-harness.py --api '${{ matrix.api }}'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: embedded-gms-components-api-${{ matrix.api }}
+          path: |
+            build/embedded-gms/evidence/
+            build/embedded-gms/build-report.json
+          retention-days: 7

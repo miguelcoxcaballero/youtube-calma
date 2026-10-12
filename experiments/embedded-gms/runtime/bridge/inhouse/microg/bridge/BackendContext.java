@@ -1,0 +1,47 @@
+package inhouse.microg.bridge;
+
+import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.res.AssetManager;
+import android.content.res.Configuration;
+import android.content.res.Resources;
+import android.view.LayoutInflater;
+
+/** Keeps real installed package/UID while supplying the backend's code and resource table. */
+public final class BackendContext extends ContextWrapper {
+    private Resources.Theme theme;
+    private LayoutInflater inflater;
+
+    BackendContext(Context base) { super(base); }
+
+    @Override public Resources getResources() { return BackendEnvironment.resources; }
+    @Override public AssetManager getAssets() { return getResources().getAssets(); }
+    @Override public ClassLoader getClassLoader() { return BackendEnvironment.classLoader; }
+
+    @Override public Resources.Theme getTheme() {
+        if (theme == null) theme = getResources().newTheme();
+        return theme;
+    }
+    @Override public void setTheme(int resourceId) { getTheme().applyStyle(resourceId, true); }
+
+    @Override public Object getSystemService(String name) {
+        if (LAYOUT_INFLATER_SERVICE.equals(name)) {
+            if (inflater == null) inflater = ((LayoutInflater) super.getSystemService(name)).cloneInContext(this);
+            return inflater;
+        }
+        return super.getSystemService(name);
+    }
+
+    @Override public Context createConfigurationContext(Configuration configuration) {
+        // Full integration must build a configuration-specific backend Resources instance.
+        // This prototype keeps the backend table and copies the requested display/night mode.
+        getResources().updateConfiguration(configuration, getResources().getDisplayMetrics());
+        return new BackendContext(super.createConfigurationContext(configuration));
+    }
+
+    // Deliberately keep ContextWrapper's real Application identity: AndroidX lifecycle code
+    // casts applicationContext to android.app.Application. The host harness Application must
+    // expose these resources/classLoader in the backend process for application-wide clients.
+    // Also leave getPackageName/getOpPackageName/PackageManager unchanged; there is no second
+    // installed package and this research must not fake PackageManager entries or UID checks.
+}
