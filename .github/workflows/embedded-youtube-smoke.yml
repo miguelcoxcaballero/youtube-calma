@@ -9,19 +9,13 @@ concurrency:
   group: embedded-youtube-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  embedded-youtube:
+  candidate:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [35, 36]
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - name: Enable emulator acceleration
-        run: sudo chmod 666 /dev/kvm
       - name: Select Java 21 for the pinned APK patcher
         run: |
           test -d "$JAVA_HOME_21_X64"
@@ -66,15 +60,53 @@ jobs:
             --gms-apk build/embedded-youtube-input/gmscore.apk \
             --morphe tools/morphe.jar \
             --instrumentation --debug-signing
+      - name: Share the exact test APK and build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: embedded-youtube-candidate
+          # Never upload the disposable keystore or the build work directory.
+          path: |
+            build/embedded-youtube/*-embedded-EXPERIMENTAL.apk
+            build/embedded-youtube/build-report.json
+            build/embedded-youtube/adapted-gmscore.report.json
+            build/embedded-youtube/work/embedded-res/host-registration-report.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+  android:
+    needs: candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [35, 36]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download this run's immutable candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: embedded-youtube-candidate
+          path: build/embedded-youtube
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
       - name: Exercise actual YouTube without external microG
         run: |
           python3 - <<'PY'
-          import json, subprocess
+          import hashlib, json, subprocess
           from pathlib import Path
           output = Path('build/embedded-youtube')
           report = json.loads((output / 'build-report.json').read_text())
+          if not report['debugSigning'] or not report['instrumentationIncluded'] or report['productionRelease']:
+              raise RuntimeError('CI requires an instrumented, disposable test build')
+          apk = output / report['apk']
+          with apk.open('rb') as stream:
+              if hashlib.file_digest(stream, 'sha256').hexdigest() != report['apkSha256']:
+                  raise RuntimeError('Candidate differs from its immutable build report')
           subprocess.run(['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
-                          '--api', '${{ matrix.api }}', '--apk', str(output / report['apk']),
+                          '--api', '${{ matrix.api }}', '--apk', str(apk),
                           '--output-dir', str(output / 'evidence')], check=True)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

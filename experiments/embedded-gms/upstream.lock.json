@@ -10,5 +10,5 @@
   "apkVersionCode": 250932004,
   "apkTargetSdk": 29,
   "sourceLicense": "Apache-2.0",
-  "status": "experimental-component-probe-only"
+  "status": "experimental-native-youtube-candidate"
 }

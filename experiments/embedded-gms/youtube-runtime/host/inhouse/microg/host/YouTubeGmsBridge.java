@@ -70,7 +70,6 @@ public final class YouTubeGmsBridge {
                 // Android to publish any backend provider under its startup deadline.
                 EmbeddedRuntime.open(application);
                 verifyRegistration(application);
-                verifyProvider(application);
                 verifyService(application);
                 state = "ready";
             } catch (Exception failure) {
@@ -167,6 +166,10 @@ public final class YouTubeGmsBridge {
             if (!bound || !completed.await(12, TimeUnit.SECONDS) || !alive.get()) {
                 throw new IllegalStateException("Embedded token service did not respond");
             }
+            // A provider-first cold start has a shorter Android publication deadline.
+            // Keep a real service binding alive while querying the same backend process;
+            // this retains all hash checks and does not change platform timeout limits.
+            verifyProvider(context);
         } finally {
             if (bound) context.unbindService(connection);
         }

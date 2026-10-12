@@ -2,13 +2,18 @@ package inhouse.microg.host;
 
 import android.app.Activity;
 import android.app.Application;
+import android.app.AppComponentFactory;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ContentProvider;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 
 /** Preserve the host's CoreComponentFactory everywhere except the private backend process. */
-public final class YouTubeComponentFactory extends androidx.core.app.CoreComponentFactory {
+public final class YouTubeComponentFactory extends AppComponentFactory {
+    // The pinned YouTube APK marks CoreComponentFactory's instantiate methods final.
+    // Delegate to preserve its compatibility-wrapper behavior; do not subclass it.
+    private final AppComponentFactory host = new androidx.core.app.CoreComponentFactory();
     private static boolean backendProcess() {
         return "app.revanced.android.youtube:inhouse_gms".equals(Application.getProcessName());
     }
@@ -19,30 +24,34 @@ public final class YouTubeComponentFactory extends androidx.core.app.CoreCompone
 
     @Override public Application instantiateApplication(ClassLoader loader, String name)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        return backendProcess() ? new BackendApplication() : super.instantiateApplication(loader, name);
+        return backendProcess() ? new BackendApplication() : host.instantiateApplication(loader, name);
     }
 
     @Override public Activity instantiateActivity(ClassLoader loader, String name, Intent intent)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         return backendComponent(name) ? (Activity) EmbeddedRuntime.current().newComponent(name)
-                : super.instantiateActivity(loader, name, intent);
+                : host.instantiateActivity(loader, name, intent);
     }
 
     @Override public Service instantiateService(ClassLoader loader, String name, Intent intent)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         return backendComponent(name) ? (Service) EmbeddedRuntime.current().newComponent(name)
-                : super.instantiateService(loader, name, intent);
+                : host.instantiateService(loader, name, intent);
     }
 
     @Override public ContentProvider instantiateProvider(ClassLoader loader, String name)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         return backendComponent(name) ? (ContentProvider) EmbeddedRuntime.current().newComponent(name)
-                : super.instantiateProvider(loader, name);
+                : host.instantiateProvider(loader, name);
     }
 
     @Override public BroadcastReceiver instantiateReceiver(ClassLoader loader, String name, Intent intent)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException {
         return backendComponent(name) ? (BroadcastReceiver) EmbeddedRuntime.current().newComponent(name)
-                : super.instantiateReceiver(loader, name, intent);
+                : host.instantiateReceiver(loader, name, intent);
+    }
+
+    @Override public ClassLoader instantiateClassLoader(ClassLoader loader, ApplicationInfo info) {
+        return host.instantiateClassLoader(loader, info);
     }
 }

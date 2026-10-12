@@ -89,10 +89,11 @@ def main():
         add(fragment, 'permission', name=name, protectionLevel='signature')
         add(fragment, 'uses-permission', name=name)
     app = add(fragment, 'application', appComponentFactory='inhouse.microg.host.YouTubeComponentFactory')
-    for name in ('checkin_enable_service', 'gcm_enable_mcs_service'):
+    for name in ('checkin_enable_service', 'gcm_enable_mcs_service', 'droidguard_enabled', 'safetynet_enabled'):
         add(app, 'meta-data', name='org.microg.gms.settings.' + name, value='true')
     add(app, 'meta-data', name='firebase_messaging_notification_delegation_enabled', value='false')
-    # Optional attestation/location services are not enabled by this migration.
+    # Preserve upstream authentication/challenge defaults. Location/contact
+    # providers and unrelated account types remain outside this integration.
     components, skipped = [], []
     class_mapping = report['componentClassMapping']
     endpoint_mapping = report['endpointMappings']

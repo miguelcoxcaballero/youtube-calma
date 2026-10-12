@@ -19,16 +19,31 @@ PACKAGE = 'es.inhouse.gmsprobe'
 
 def login_ui_structure(nodes) -> dict:
     """Classify a fresh login UI without retaining remote or user-entered text."""
-    texts = {(node.get(attribute) or '').casefold().strip() for node in nodes
+    texts = {re.sub(r'\s+', ' ', (node.get(attribute) or '').casefold()).strip() for node in nodes
              for attribute in ('text', 'content-desc', 'hint')}
-    credential = bool(texts & {'email or phone', 'email address', 'enter your email', 'email'})
+    # WebView accessibility may combine a label and helper text, or add "number".
+    # Recognize only fixed sign-in phrases and explicit editable-field semantics.
+    credential = any(any(phrase in text for phrase in
+                         ('email or phone', 'phone or email', 'enter your email', 'enter an email'))
+                     for text in texts)
+    editable = [node for node in nodes if 'EditText' in node.get('class', '')]
+    editable_texts = {(node.get(attribute) or '').casefold() for node in editable
+                      for attribute in ('text', 'content-desc', 'hint')}
+    credential = credential or any(re.search(r'\be-?mail(?: address)?\b', text) for text in editable_texts)
     credential = credential or any((node.get('resource-id') or '').split('/')[-1] == 'identifierId'
                                    for node in nodes)
     return {
         'nodeCount': len(nodes),
         'webViewVisible': any(node.get('class') == 'android.webkit.WebView' for node in nodes),
-        'editableFieldCount': sum('EditText' in node.get('class', '') for node in nodes),
+        'editableFieldCount': len(editable),
         'credentialLabelOrIdRecognized': credential,
+        'emailWordVisible': any(re.search(r'\be-?mail\b', text) for text in texts),
+        'phoneWordVisible': any(re.search(r'\bphone\b', text) for text in texts),
+        'signInHeadingVisible': 'sign in' in texts,
+        'forgotEmailVisible': any('forgot email' in text for text in texts),
+        'captchaPromptVisible': any('type the text you hear or see' in text
+                                   or 'enter the text you see' in text
+                                   or 'not a robot' in text for text in texts),
         'progressIndicatorVisible': any('ProgressBar' in node.get('class', '') for node in nodes),
         'connectingMessageVisible': any('establishing a connection to google' in text for text in texts),
         'justASecVisible': any(text in {'just a sec', 'just a sec…', 'just a sec...'} for text in texts),
@@ -142,7 +157,8 @@ def main() -> None:
             structure = login_ui_structure(ui_nodes())
             if not state['uiStates'] or state['uiStates'][-1] != structure:
                 state['uiStates'].append(structure)
-            if structure['webViewVisible'] and structure['credentialLabelOrIdRecognized']:
+            if (structure['webViewVisible'] and structure['editableFieldCount'] > 0
+                    and structure['credentialLabelOrIdRecognized'] and not structure['captchaPromptVisible']):
                 state['googleCredentialEntryVisible'] = True
                 break
             if structure['networkErrorVisible']:

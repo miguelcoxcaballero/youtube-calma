@@ -76,31 +76,6 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
             require("backend preferences do not collide with host", !context.getSharedPreferences(preference,
                     Context.MODE_PRIVATE).contains("probe"));
             backend.deleteSharedPreferences(preference);
-            for (String authority : new String[]{HOST + ".inhouse.gms.gservices", HOST + ".inhouse.gms.auth.accounts"}) {
-                ProviderInfo provider = context.getPackageManager().resolveContentProvider(authority, 0);
-                require("private owned provider: " + authority, provider != null
-                        && HOST.equals(provider.packageName) && (HOST + ":inhouse_gms").equals(provider.processName)
-                        && provider.applicationInfo.uid == Process.myUid() && !provider.exported);
-            }
-            Uri uri = Uri.parse("content://" + HOST + ".inhouse.gms.gservices/prefix");
-            try (ContentProviderClient provider = context.getContentResolver().acquireUnstableContentProviderClient(uri)) {
-                require("real GServices provider starts", provider != null);
-                try (Cursor ignored = provider.query(uri, null, null, new String[]{"inhouse.smoke."}, null)) {}
-                require("real GServices query returns", true);
-            }
-            boolean authenticator = false;
-            for (AuthenticatorDescription auth : AccountManager.get(context).getAuthenticatorTypes()) {
-                if (ACCOUNT.equals(auth.type) && HOST.equals(auth.packageName)) authenticator = true;
-            }
-            require("Android registers owned embedded authenticator", authenticator);
-            try (ContentProviderClient provider = context.getContentResolver().acquireUnstableContentProviderClient(
-                    Uri.parse("content://" + HOST + ".inhouse.gms.auth.accounts"))) {
-                require("real account provider starts", provider != null);
-                Bundle response = provider.call("get_accounts", ACCOUNT, null);
-                require("account provider accepts real host caller", response != null
-                        && response.getParcelableArray("accounts") != null
-                        && response.getParcelableArray("accounts").length == 0);
-            }
             CountDownLatch connected = new CountDownLatch(1);
             AtomicReference<IBinder> binder = new AtomicReference<>();
             ServiceConnection connection = new ServiceConnection() {
@@ -118,6 +93,31 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                         && binder.get() != null && binder.get().isBinderAlive());
                 require("token Binder exposes upstream protocol", "com.google.android.auth.IAuthManagerService"
                         .equals(binder.get().getInterfaceDescriptor()));
+                for (String authority : new String[]{HOST + ".inhouse.gms.gservices", HOST + ".inhouse.gms.auth.accounts"}) {
+                    ProviderInfo provider = context.getPackageManager().resolveContentProvider(authority, 0);
+                    require("private owned provider: " + authority, provider != null
+                            && HOST.equals(provider.packageName) && (HOST + ":inhouse_gms").equals(provider.processName)
+                            && provider.applicationInfo.uid == Process.myUid() && !provider.exported);
+                }
+                Uri uri = Uri.parse("content://" + HOST + ".inhouse.gms.gservices/prefix");
+                try (ContentProviderClient provider = context.getContentResolver().acquireUnstableContentProviderClient(uri)) {
+                    require("real GServices provider starts", provider != null);
+                    try (Cursor ignored = provider.query(uri, null, null, new String[]{"inhouse.smoke."}, null)) {}
+                    require("real GServices query returns", true);
+                }
+                boolean authenticator = false;
+                for (AuthenticatorDescription auth : AccountManager.get(context).getAuthenticatorTypes()) {
+                    if (ACCOUNT.equals(auth.type) && HOST.equals(auth.packageName)) authenticator = true;
+                }
+                require("Android registers owned embedded authenticator", authenticator);
+                try (ContentProviderClient provider = context.getContentResolver().acquireUnstableContentProviderClient(
+                        Uri.parse("content://" + HOST + ".inhouse.gms.auth.accounts"))) {
+                    require("real account provider starts", provider != null);
+                    Bundle response = provider.call("get_accounts", ACCOUNT, null);
+                    require("account provider accepts real host caller", response != null
+                            && response.getParcelableArray("accounts") != null
+                            && response.getParcelableArray("accounts").length == 0);
+                }
             } finally { if (bound) context.unbindService(connection); }
             if ("true".equals(arguments.getString("openLogin"))) {
                 context.startActivity(new Intent().setComponent(new ComponentName(HOST,

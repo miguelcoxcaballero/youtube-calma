@@ -16,6 +16,15 @@ import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.graphics.drawable.Icon;
 import android.os.Build;
+import android.os.Process;
+import android.system.ErrnoException;
+import android.system.Os;
+import android.system.OsConstants;
+import android.system.StructStat;
+import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.IdentityHashMap;
 
 /** Isolated with microG. Never references host-private or vendor AndroidX classes. */
@@ -126,6 +135,74 @@ public final class BackendEnvironment {
             manager.setAndAllowWhileIdle(type, time, operation);
         } else {
             manager.setExactAndAllowWhileIdle(type, time, operation);
+        }
+    }
+
+    private static File privateVmPath(File candidate) throws IOException {
+        if (application == null) throw new IllegalStateException("Backend application is unavailable");
+        File root = application.getDir("cache_dg", Context.MODE_PRIVATE).getCanonicalFile();
+        File canonical = candidate.getCanonicalFile();
+        if (!canonical.getPath().startsWith(root.getPath() + File.separator)) {
+            throw new SecurityException("Challenge executable must remain in the private backend cache");
+        }
+        if (candidate.exists() && !candidate.getAbsoluteFile().equals(canonical)) {
+            // Do not follow a file alias into executable code, even within the cache.
+            try {
+                if (OsConstants.S_ISLNK(Os.lstat(candidate.getAbsolutePath()).st_mode)) {
+                    throw new SecurityException("Challenge executable cannot be a symbolic link");
+                }
+            } catch (ErrnoException error) { throw new IOException("Cannot inspect challenge cache", error); }
+        }
+        return canonical;
+    }
+
+    /** Android 14 DCL requires making the new file read-only before writing its bytes. */
+    public static void writeReadOnlyVm(File destination, byte[] payload) throws IOException {
+        if (payload == null) throw new NullPointerException("Challenge executable payload");
+        File target = privateVmPath(destination);
+        FileDescriptor descriptor = null;
+        boolean created = false;
+        boolean complete = false;
+        try {
+            descriptor = Os.open(target.getAbsolutePath(), OsConstants.O_WRONLY | OsConstants.O_CREAT
+                    | OsConstants.O_EXCL | OsConstants.O_NOFOLLOW, 0600);
+            created = true;
+            Os.fchmod(descriptor, 0400);
+            try (FileOutputStream output = new FileOutputStream(descriptor)) {
+                descriptor = null; // The stream now owns and closes the descriptor.
+                output.write(payload);
+                output.getFD().sync();
+            }
+            validateVmFile(target);
+            complete = true;
+        } catch (ErrnoException error) {
+            throw new IOException("Cannot create private read-only challenge executable", error);
+        } finally {
+            if (descriptor != null) try { Os.close(descriptor); } catch (ErrnoException ignored) {}
+            if (created && !complete) target.delete();
+        }
+        // This is storage hardening only. The existing signed-response/checksum
+        // validation and challenge result flow remain in the original module.
+    }
+
+    public static String prepareVmForLoading(String path) throws IOException {
+        File target = privateVmPath(new File(path));
+        try {
+            StructStat info = Os.lstat(target.getAbsolutePath());
+            if (!OsConstants.S_ISREG(info.st_mode) || info.st_uid != Process.myUid()) {
+                throw new SecurityException("Challenge executable is not a private regular file");
+            }
+            if (!target.setReadOnly()) throw new SecurityException("Cannot protect challenge executable");
+            validateVmFile(target);
+            return target.getAbsolutePath();
+        } catch (ErrnoException error) { throw new IOException("Cannot inspect challenge executable", error); }
+    }
+
+    private static void validateVmFile(File target) throws ErrnoException {
+        StructStat info = Os.lstat(target.getAbsolutePath());
+        if (!OsConstants.S_ISREG(info.st_mode) || info.st_uid != Process.myUid()
+                || (info.st_mode & 0222) != 0 || info.st_size == 0) {
+            throw new SecurityException("Challenge executable is not a private read-only regular file");
         }
     }
 }

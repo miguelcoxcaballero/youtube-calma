@@ -80,14 +80,20 @@ public final class ProbeInstrumentation extends Instrumentation {
             ProviderInfo provider = context.getPackageManager().resolveContentProvider("app.revanced.android.gsf.gservices", 0);
             check("provider belongs to only installed probe APK", provider != null && provider.packageName.equals(context.getPackageName()));
             check("provider uses separate backend process", provider.processName.equals(context.getPackageName() + ":microg"));
-            Uri base = Uri.parse("content://app.revanced.android.gsf.gservices/");
-            ContentValues values = new ContentValues(); values.put("name", "inhouse_probe_value"); values.put("value", "embedded");
-            check("real Gservices provider stores value", context.getContentResolver().update(Uri.withAppendedPath(base, "main"), values, null, null) == 1);
-            try (Cursor cursor = context.getContentResolver().query(Uri.withAppendedPath(base, "prefix"), null, null, new String[]{"inhouse_probe_"}, null)) {
-                check("real Gservices provider reads stored value", cursor != null && cursor.moveToFirst() && "embedded".equals(cursor.getString(cursor.getColumnIndexOrThrow("value"))));
-            }
+            // Verify and initialize the backend through its actual service lifecycle
+            // before a provider request. A cold provider launch has a 10-second
+            // Android publishing deadline, including all archive hashing/dex setup.
+            // Keep this binding alive while exercising the real provider; no hashes
+            // are skipped and no system timeout is changed by the probe.
             try (Binding auth = bind("inhouse.microg.bridge.GetTokenServiceBridge", "com.google.android.gms.auth.GetToken")) {
                 check("auth Binder descriptor is real upstream interface", "com.google.android.auth.IAuthManagerService".equals(auth.binder.getInterfaceDescriptor()));
+                report.put("startupStrategy", "bind embedded service before provider access");
+                Uri base = Uri.parse("content://app.revanced.android.gsf.gservices/");
+                ContentValues values = new ContentValues(); values.put("name", "inhouse_probe_value"); values.put("value", "embedded");
+                check("real Gservices provider stores value", context.getContentResolver().update(Uri.withAppendedPath(base, "main"), values, null, null) == 1);
+                try (Cursor cursor = context.getContentResolver().query(Uri.withAppendedPath(base, "prefix"), null, null, new String[]{"inhouse_probe_"}, null)) {
+                    check("real Gservices provider reads stored value", cursor != null && cursor.moveToFirst() && "embedded".equals(cursor.getString(cursor.getColumnIndexOrThrow("value"))));
+                }
                 Parcel data = Parcel.obtain(), reply = Parcel.obtain();
                 try {
                     data.writeInterfaceToken("com.google.android.auth.IAuthManagerService");

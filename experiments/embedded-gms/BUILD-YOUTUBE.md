@@ -52,3 +52,8 @@ The optional instrumentation and module payload remain inside the same APK.
 Neither the wrapper nor the runtime installs an external microG package. The
 runtime does not download executable code. External microG accounts and tokens
 are not copied into the new authenticator.
+
+CI compiles one disposable candidate, then tests that exact artifact on Android
+15 and 16 in parallel. Each runner verifies the APK against its shared build
+report before installing it. Only the debug APK and build evidence are shared;
+no signing key or unrelated build files are uploaded.

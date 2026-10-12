@@ -16,6 +16,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.value.StringEncodedValue
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.ImmutableDexFile
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.value.ImmutableStringEncodedValue
@@ -42,6 +44,8 @@ private const val CONTEXT = "Landroid/content/Context;"
 private const val HOST = "app.revanced.android.youtube"
 private const val ORIGINAL = "app.revanced.android.gms"
 private const val ACCOUNT = "es.inhouse.youtube.google"
+private const val DG_FACTORY = "Lorg/microg/gms/droidguard/HandleProxyFactory;"
+private const val DG_NETWORK = "Lorg/microg/gms/droidguard/core/NetworkHandleProxyFactory;"
 private fun quoted(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 private fun mapped(value: String): String {
     if (value == "app.revanced") return ACCOUNT
@@ -71,6 +75,7 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
         val fieldChanges = mutableListOf<String>()
         val hooks = mutableListOf<String>()
         val redactions = mutableListOf<String>()
+        val droidGuardHooks = mutableListOf<String>()
         var foregroundHooks = 0
         var alarmHooks = 0
         var notificationHooks = 0
@@ -82,11 +87,12 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
             val isSensitive = sensitiveClass(definition.type)
             val isForeground = definition.type == "Lorg/microg/gms/common/ForegroundServiceContext;"
             val isMcs = definition.type == "Lorg/microg/gms/gcm/McsService;"
+            val isDroidGuard = definition.type == DG_FACTORY || definition.type == DG_NETWORK
             val hasNotificationSink = definition.methods.any { m -> m.implementation?.instructions?.any { i ->
                 val ref = (i as? ReferenceInstruction)?.reference as? MethodReference
                 ref?.definingClass == "Landroid/app/NotificationManager;" && ref.name == "notify"
             } == true }
-            if (!needsStrings && !isSensitive && !isForeground && !isMcs && !hasNotificationSink) continue
+            if (!needsStrings && !isSensitive && !isForeground && !isMcs && !isDroidGuard && !hasNotificationSink) continue
             val cls = mutableClassDefBy(definition)
             for (field in cls.fields) {
                 val old = (field.initialValue as? StringEncodedValue)?.value ?: continue
@@ -99,7 +105,8 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
             for (method in cls.methods.toList()) {
                 val impl = method.implementation ?: continue
                 val originalInstructions = impl.instructions.toList()
-                for ((index, ins) in originalInstructions.withIndex()) {
+                // Descending order keeps original indexes valid when a compatibility hook adds code.
+                for ((index, ins) in originalInstructions.withIndex().reversed()) {
                     val ref = (ins as? ReferenceInstruction)?.reference
                     if (ref is StringReference && ins is OneRegisterInstruction) {
                         val replacement = mapped(ref.string)
@@ -109,6 +116,26 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
                         }
                     }
                     if (ref !is MethodReference) continue
+                    if (isDroidGuard && ref.definingClass == "Lkotlin/io/FilesKt;" && ref.name == "writeBytes" &&
+                        ref.parameterTypes.map { it.toString() } == listOf("Ljava/io/File;", "[B")) {
+                        check((definition.type == DG_FACTORY && method.name == "fetchFromFileDescriptor") ||
+                            (definition.type == DG_NETWORK && method.name == "fetchFromServer"))
+                        val regs = ins as? FiveRegisterInstruction ?: error("Unexpected DroidGuard write format")
+                        check(regs.registerCount == 2)
+                        method.replaceInstruction(index, "invoke-static {v${regs.registerC}, v${regs.registerD}}, $ENV->writeReadOnlyVm(Ljava/io/File;[B)V")
+                        droidGuardHooks.add(methodId(method) + "@" + index + ":read-only VM write")
+                    }
+                    if (definition.type == DG_FACTORY && method.name == "loadClass" &&
+                        ref.definingClass == "Ldalvik/system/DexClassLoader;" && ref.name == "<init>") {
+                        val regs = ins as? FiveRegisterInstruction ?: error("Unexpected DroidGuard loader format")
+                        check(regs.registerCount == 5 && ref.parameterTypes.map { it.toString() } ==
+                            listOf("Ljava/lang/String;", "Ljava/lang/String;", "Ljava/lang/String;", "Ljava/lang/ClassLoader;"))
+                        // Only protect the code file used by the original loader. Signed-response
+                        // verification, VM content, class name, parent loader and VM execution are untouched.
+                        val path = regs.registerD
+                        method.addInstructions(index, "invoke-static {v$path}, $ENV->prepareVmForLoading(Ljava/lang/String;)Ljava/lang/String;\nmove-result-object v$path")
+                        droidGuardHooks.add(methodId(method) + "@" + index + ":read-only VM load gate")
+                    }
                     if (isSensitive && ref.definingClass == "Landroid/util/Log;" && ref.returnType == "I" && ref.name in setOf("d", "i", "v", "w", "e", "wtf", "println")) {
                         // Drop the logging sink, including Throwable overloads which can carry raw
                         // tokens/URLs. Preserve any integer result register and control flow.
@@ -196,10 +223,11 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
         check(foregroundHooks == 1) { "Expected exactly one foreground promotion call, found $foregroundHooks" }
         check(alarmHooks == 2) { "Expected two MCS exact alarm calls, found $alarmHooks" }
         check(notificationHooks > 0)
+        check(droidGuardHooks.size == 3) { "Expected two DroidGuard writes and one loader hook, found ${droidGuardHooks.size}" }
         check(stringChanges.isNotEmpty() && fieldChanges.isNotEmpty() && redactions.isNotEmpty())
         val report = "{" + listOf(
             "stringRewrites" to stringChanges, "fieldRewrites" to fieldChanges,
-            "contextAndThemeHooks" to hooks, "redactedLogCalls" to redactions,
+            "contextAndThemeHooks" to hooks, "redactedLogCalls" to redactions, "droidGuardReadOnlyHooks" to droidGuardHooks,
             "foregroundHooks" to listOf(foregroundHooks.toString()), "alarmHooks" to listOf(alarmHooks.toString()), "notificationHooks" to listOf(notificationHooks.toString())
         ).joinToString(",") { (key, values) -> quoted(key) + ":[" + values.joinToString(",") { quoted(it) } + "]" } + "}"
         File(System.getProperty("inhouse.backend.report") ?: error("Report path required")).writeText(report)
@@ -219,7 +247,39 @@ private val relocatedComponents = listOf(
     "com.google.android.gms.common.api.GoogleApiActivity"
 ).associateWith { "inhouse.microg.module." + it }
 
+// Serialize the unchanged validation subset into a fresh DEX to compare semantics
+// without being fooled by different whole-archive string/type indexes.
+private fun signatureValidationDigest(apk: File): String {
+    val container = DexFileFactory.loadDexContainer(apk, Opcodes.getDefault())
+    val selected = mutableListOf<ImmutableClassDef>()
+    for (entry in container.dexEntryNames) for (cls in container.getEntry(entry)!!.dexFile.classes) {
+        val methods = when (cls.type) {
+            "Lorg/microg/gms/droidguard/core/SignatureVerifier;" -> cls.methods.toList()
+            DG_NETWORK -> cls.methods.filter { it.name == "unpack" }
+            DG_FACTORY -> cls.methods.filter { it.name == "verifyApkSignature" }
+            else -> continue
+        }
+        check(methods.isNotEmpty()) { "Missing original DroidGuard validation method" }
+        selected.add(ImmutableClassDef(cls.type, cls.accessFlags, cls.superclass, cls.interfaces,
+            cls.sourceFile, cls.annotations, cls.fields, methods))
+    }
+    check(selected.size == 3) { "Missing DroidGuard validation class" }
+    val store = MemoryDataStore()
+    DexPool.writeTo(store, ImmutableDexFile(Opcodes.getDefault(), selected))
+    val result = java.security.MessageDigest.getInstance("SHA-256").digest(store.data)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    store.close()
+    return result
+}
+
 fun main(args: Array<String>) {
+    if (args.size == 4 && args[0] == "--verify-droidguard") {
+        val before = signatureValidationDigest(File(args[1]))
+        val after = signatureValidationDigest(File(args[2]))
+        check(before == after) { "DroidGuard signed-response validation changed" }
+        File(args[3]).writeText("{\"validationSubsetSha256\":${quoted(before)},\"signedResponseValidationUnchanged\":true,\"upstreamApkSignatureStubUnchanged\":true}")
+        return
+    }
     require(args.size == 2) { "Backend relocation requires input and output archives" }
     val input = File(args[0]); val output = File(args[1])
     val types = relocatedComponents.mapKeys { "L" + it.key.replace('.', '/') + ";" }

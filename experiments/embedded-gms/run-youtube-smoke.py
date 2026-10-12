@@ -24,6 +24,43 @@ INSTRUMENTATION = PACKAGE + '/inhouse.microg.host.YouTubeSmokeInstrumentation'
 FORBIDDEN = {'app.revanced.android.gms', 'com.mgoogle.android.gms'}
 
 
+def login_ui_structure(nodes) -> dict:
+    """Classify a fresh login UI without retaining remote or user-entered text."""
+    texts = {re.sub(r'\s+', ' ', (node.get(attribute) or '').casefold()).strip() for node in nodes
+             for attribute in ('text', 'content-desc', 'hint')}
+    # WebView accessibility may combine a label and helper text, or add "number".
+    # Recognize only fixed sign-in phrases and explicit editable-field semantics.
+    credential = any(any(phrase in text for phrase in
+                         ('email or phone', 'phone or email', 'enter your email', 'enter an email'))
+                     for text in texts)
+    editable = [node for node in nodes if 'EditText' in node.get('class', '')]
+    editable_texts = {(node.get(attribute) or '').casefold() for node in editable
+                      for attribute in ('text', 'content-desc', 'hint')}
+    credential = credential or any(re.search(r'\be-?mail(?: address)?\b', text) for text in editable_texts)
+    credential = credential or any((node.get('resource-id') or '').split('/')[-1] == 'identifierId'
+                                   for node in nodes)
+    return {
+        'nodeCount': len(nodes),
+        'webViewVisible': any(node.get('class') == 'android.webkit.WebView' for node in nodes),
+        'editableFieldCount': len(editable),
+        'credentialLabelOrIdRecognized': credential,
+        'emailWordVisible': any(re.search(r'\be-?mail\b', text) for text in texts),
+        'phoneWordVisible': any(re.search(r'\bphone\b', text) for text in texts),
+        'signInHeadingVisible': 'sign in' in texts,
+        'forgotEmailVisible': any('forgot email' in text for text in texts),
+        'captchaPromptVisible': any('type the text you hear or see' in text
+                                   or 'enter the text you see' in text
+                                   or 'not a robot' in text for text in texts),
+        'progressIndicatorVisible': any('ProgressBar' in node.get('class', '') for node in nodes),
+        'connectingMessageVisible': any('establishing a connection to google' in text for text in texts),
+        'justASecVisible': any(text in {'just a sec', 'just a sec…', 'just a sec...'} for text in texts),
+        'sorryVisible': 'sorry' in texts,
+        'nextButtonVisible': 'next' in texts,
+        'networkErrorVisible': any('problem communicating with google servers' in text
+                                  or 'check your network connection' in text for text in texts),
+    }
+
+
 def structural_log(raw: str) -> str:
     """Allowlisted crash structure/timings only; omit upstream messages and payloads."""
     result = []
@@ -191,7 +228,8 @@ def main() -> None:
                 deadline = time.monotonic() + 30
                 button = None
                 while time.monotonic() < deadline:
-                    button = next((node for node in nodes() if (node.get('text') or '').casefold() == 'sign in'
+                    button = next((node for node in nodes() if any((node.get(attribute) or '').casefold().strip() == 'sign in'
+                                   for attribute in ('text', 'content-desc', 'hint'))
                                    and 'Button' in node.get('class', '')), None)
                     if button is not None:
                         break
@@ -208,23 +246,13 @@ def main() -> None:
                 deadline = time.monotonic() + 90
                 while time.monotonic() < deadline:
                     current = nodes()
-                    texts = [(node.get(attribute) or '').casefold().strip() for node in current
-                             for attribute in ('text', 'content-desc', 'hint')]
-                    webview = any(node.get('class') == 'android.webkit.WebView' for node in current)
-                    credential = any(text in {'email or phone', 'email address', 'enter your email', 'email'} for text in texts)
-                    credential = credential or any((node.get('resource-id') or '').split('/')[-1]
-                                                   == 'identifierId' for node in current)
-                    report['loginUiStructure'] = {
-                        'webViewVisible': webview,
-                        'editableFieldCount': sum('EditText' in node.get('class', '') for node in current),
-                        'credentialLabelOrIdRecognized': credential,
-                        'progressIndicatorVisible': any('ProgressBar' in node.get('class', '') for node in current),
-                    }
-                    if webview and credential:
+                    structure = login_ui_structure(current)
+                    report['loginUiStructure'] = structure
+                    if (structure['webViewVisible'] and structure['editableFieldCount'] > 0
+                            and structure['credentialLabelOrIdRecognized'] and not structure['captchaPromptVisible']):
                         report['googleCredentialEntryVisible'] = True
                         break
-                    if any('problem communicating with google servers' in text or 'check your network connection' in text
-                           for text in texts):
+                    if structure['networkErrorVisible']:
                         report['networkErrorVisible'] = True
                         break
                     if not adb('shell', 'pidof', PACKAGE + ':inhouse_gms').stdout.strip():

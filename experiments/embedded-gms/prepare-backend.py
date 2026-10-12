@@ -132,6 +132,9 @@ def main():
         run('java', '-Xmx7g', '-cp', str(jar) + ':' + str(args.morphe),
             'inhouse.microg.patches.BackendPatchKt', pending, relocated)
         pending = relocated
+        dg_validation = work / 'droidguard-validation.json'
+        run('java', '-Xmx3g', '-cp', str(jar) + ':' + str(args.morphe),
+            'inhouse.microg.patches.BackendPatchKt', '--verify-droidguard', source, pending, dg_validation)
         rewritten = audit.apk_dex(pending)
         if ORIGINAL in rewritten['strings'] or 'app.revanced' in rewritten['strings']:
             raise RuntimeError('External package/account type remains in emitted backend DEX')
@@ -156,6 +159,8 @@ def main():
             'prepareActivity': '(Landroid/app/Activity;)V',
             'startForeground': '(Landroid/app/Service;ILandroid/app/Notification;)V',
             'scheduleAlarm': '(Landroid/app/AlarmManager;IJLandroid/app/PendingIntent;)V',
+            'writeReadOnlyVm': '(Ljava/io/File;[B)V',
+            'prepareVmForLoading': '(Ljava/lang/String;)Ljava/lang/String;',
             'notify(int)': '(Landroid/app/NotificationManager;ILandroid/app/Notification;)V',
             'notify(tag,int)': '(Landroid/app/NotificationManager;Ljava/lang/String;ILandroid/app/Notification;)V',
         }
@@ -171,7 +176,7 @@ def main():
             'componentClassMapping': COMPONENT_CLASS_MAPPING,
             'bridgeClass': 'inhouse.microg.bridge.BackendEnvironment', 'requiredBridgeMethods': required_methods,
             'componentHooks': [{'class': t[1:-1].replace('/', '.'), 'kind': k} for t, k in hooks],
-            'mutations': changes, 'binderDescriptorsPreserved': len(before_binders),
+            'mutations': changes, 'droidGuardValidation': json.loads(dg_validation.read_text()), 'binderDescriptorsPreserved': len(before_binders),
             'originalResourceFilesPreserved': len(resource_names),
             'classCount': len(rewritten['classes']), 'separatePackageInstalled': False,
             'hostTargetSdkUnchanged': 35, 'backendArchiveTargetSdk': upstream['apkTargetSdk'],
@@ -181,6 +186,8 @@ def main():
                 'Host manifest must provide original theme IDs in per-activity inhouse.gms.theme metadata.',
                 'Host must grant FGS/dataSync/specialUse permissions, declare types, and use host-resolvable notification icons.',
                 'Background/boot-start restrictions, dataSync timeout and reconnect lifecycle need device validation.',
+                'DroidGuard VM write/load hooks require private regular files with read-only mode before dynamic loading; original signed-response checks are unchanged.',
+                'Read-only DCL compatibility does not establish device attestation acceptance or authenticated login.',
                 'Archive is not separately installed; its targetSdk29 does not lower the installed host targetSdk35.',
             ],
         }
