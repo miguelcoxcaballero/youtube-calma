@@ -17,37 +17,54 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      # Replay only the immutable candidate while adjusting accessibility checks.
-      # Runtime source fingerprints must still match that candidate exactly.
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: embedded-youtube-candidate
-          run-id: 38262302577
-          github-token: ${{ github.token }}
-          path: build/embedded-youtube
-      - name: Verify exact candidate and unchanged runtime sources
+      - name: Select Java 21 for the pinned APK patcher
         run: |
-          python3 - <<'PYCODE'
-          import hashlib, json
+          test -d "$JAVA_HOME_21_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+          "$JAVA_HOME_21_X64/bin/java" -version
+      - name: Prepare platform and existing build tools
+        run: |
+          "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"
+          python3 scripts/setup-tools.py --android-sdk "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+      - name: Fetch exact public inputs and verify hashes
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, urllib.parse, urllib.request
           from pathlib import Path
-          output = Path('build/embedded-youtube')
-          report = json.loads((output / 'build-report.json').read_text())
-          expected = '81c26ab3201608c1f480fa0a6f84cdb54a6d12cc5ee25ac32bf3bcfe96177398'
-          with (output / report['apk']).open('rb') as stream:
-              actual = hashlib.file_digest(stream, 'sha256').hexdigest()
-          if actual != expected or actual != report['apkSha256']:
-              raise RuntimeError('Replay candidate identity mismatch')
-          if not report['debugSigning'] or not report['instrumentationIncluded'] or report['productionRelease']:
-              raise RuntimeError('Replay requires a disposable instrumented build')
-          for name, expected_hash in report['sourceHashes'].items():
-              if hashlib.sha256(Path(name).read_bytes()).hexdigest() != expected_hash:
-                  raise RuntimeError('Runtime source changed since candidate build: ' + name)
-          (output / 'replay-provenance.json').write_text(json.dumps({
-              'candidateRun': 38262302577,
-              'candidateCommit': '842d92cbb8d6727e34aa8ebbb6c61b8632a38ff0',
-              'candidateSha256': actual,
-          }, indent=2) + '\n')
-          PYCODE
+          root = Path.cwd()
+          base = json.loads((root / 'base.lock.json').read_text())
+          upstream = json.loads((root / 'experiments/embedded-gms/upstream.lock.json').read_text())
+          file_id = urllib.parse.urlparse(base['sourceUrl']).path.split('/d/', 1)[1].split('/', 1)[0]
+          drive_url = 'https://drive.usercontent.google.com/download?' + urllib.parse.urlencode({
+              'id': file_id, 'export': 'download', 'confirm': 't'})
+          inputs = [(drive_url, root / 'base/youtube-original.apk', base['sha256']),
+                    (upstream['apkUrl'], root / 'build/embedded-youtube-input/gmscore.apk', upstream['apkSha256'])]
+          for url, destination, expected in inputs:
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              temporary = destination.with_suffix('.partial')
+              try:
+                  digest = hashlib.sha256()
+                  with urllib.request.urlopen(url, timeout=120) as response, temporary.open('wb') as output:
+                      while chunk := response.read(1024 * 1024):
+                          digest.update(chunk)
+                          output.write(chunk)
+                  if digest.hexdigest() != expected:
+                      raise RuntimeError('Pinned input hash mismatch: ' + destination.name)
+                  temporary.replace(destination)
+              finally:
+                  temporary.unlink(missing_ok=True)
+          PY
+      - name: Build single-APK candidate with disposable test certificate
+        run: |
+          python3 experiments/embedded-gms/build-youtube.py \
+            --gms-apk build/embedded-youtube-input/gmscore.apk \
+            --morphe tools/morphe.jar \
+            --instrumentation --debug-signing
+      - name: Check manifest boundaries and pinned native inheritance
+        run: |
+          python3 -m unittest discover -s tests -p 'test_embedded*.py' -v
+          python3 scripts/test-embedded-inheritance.py --morphe tools/morphe.jar
       - name: Share the exact test APK and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -55,7 +72,6 @@ jobs:
           # Never upload the disposable keystore or the build work directory.
           path: |
             build/embedded-youtube/*-embedded-EXPERIMENTAL.apk
-            build/embedded-youtube/replay-provenance.json
             build/embedded-youtube/build-report.json
             build/embedded-youtube/adapted-gmscore.report.json
             build/embedded-youtube/work/embedded-res/host-registration-report.json
@@ -107,7 +123,6 @@ jobs:
           name: embedded-youtube-api-${{ matrix.api }}
           path: |
             build/embedded-youtube/evidence/
-            build/embedded-youtube/replay-provenance.json
             build/embedded-youtube/build-report.json
             build/embedded-youtube/adapted-gmscore.report.json
             build/embedded-youtube/work/embedded-res/host-registration-report.json

@@ -360,6 +360,8 @@
     "nodeCount": 43,
     "webViewVisible": true,
     "editableFieldCount": 1,
+    "passwordFieldCount": 0,
+    "usableIdentifierFieldCount": 1,
     "credentialLabelOrIdRecognized": true,
     "emailWordVisible": true,
     "phoneWordVisible": true,
@@ -371,13 +373,16 @@
     "justASecVisible": true,
     "sorryVisible": false,
     "nextButtonVisible": true,
-    "networkErrorVisible": false
+    "networkErrorVisible": false,
+    "credentialEntryLayoutRecognized": true
   },
   "externalMicrogAbsentAfter": true,
   "passed": true,
   "provenance": {
     "sourceCommit": "842d92cbb8d6727e34aa8ebbb6c61b8632a38ff0",
-    "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38262302577",
+    "runnerCommit": "1bba38864b26d7d99121ec8ce2cc724aa81a97d6",
+    "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38264289394",
+    "candidateWorkflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38262302577",
     "candidateKind": "disposable certificate; same-APK instrumentation"
   }
 }

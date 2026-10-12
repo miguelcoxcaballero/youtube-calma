@@ -75,6 +75,31 @@ Commit `db5f29bd146c43b041f8eea316343ffefddfedcd` passed all 24 component checks
 
 Commit `e0fe92ea70efc8b238013b7ab2da3ebd45656db5` also passed the standalone login-entry profile on Android API 36 in [run 38254838639](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38254838639). All 24 component checks passed, and the visible Google sign-in page exposed its email/phone field through accessibility. No external microG was installed and no account details were entered. The sanitized report, including its source commit and workflow link, is preserved in [`evidence/login-entry-api36.json`](evidence/login-entry-api36.json).
 
-This proves component operation and a credential-free login page in the standalone probe. It does not establish completed authentication, native YouTube playback or notification delivery, and it does not change the release acceptance requirements above.
+The native YouTube candidate from commit `842d92cbb8d6727e34aa8ebbb6c61b8632a38ff0`
+passed all 39 component/Binder checks and displayed Google's credential-entry
+page on Android 14, 15 and 16 in [run 38264289394](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38264289394).
+That run reused the exact APK from [build 38262302577](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38262302577),
+verified its hash and runtime source fingerprints, and used the corrected
+accessibility runner at `1bba38864b26d7d99121ec8ce2cc724aa81a97d6`.
+Its SHA-256 is `81c26ab3201608c1f480fa0a6f84cdb54a6d12cc5ee25ac32bf3bcfe96177398`.
+All three emulators lacked external microG; Android 14 also had official Google
+Play Services disabled. Reports are in `evidence/native-api34.json`,
+`native-api35.json` and `native-api36.json`. Android 15's WebView omitted the
+input label; its report separately records recognition of the complete usable
+identifier-page layout, without pretending a missing label was present.
+
+These Android tests use a disposable certificate and same-APK instrumentation.
+The separately built manual candidate retains the permanent Calma signer and
+omits the instrumentation registration; its source fingerprints and exact APK
+hash are in `evidence/signed-candidate.json`. That exact signed artifact has not
+been exercised on a device or published in an update channel.
+
+These results establish native component operation and credential-page entry.
+They do not establish completed authentication, subscriptions, playback, token
+renewal, notification delivery, reboot behavior or signed in-place upgrades.
+The release acceptance requirements above still apply. For the next manual gate,
+complete a fresh sign-in from YouTube, open subscriptions, play a video, then
+close and reopen the app and repeat. Record only success/failure and relevant
+device/version information; do not upload credentials or session tokens.
 
 Any eventual automatic release goes to A. B still requires an explicit request, and A includes newer B releases as specified in the repository's `AGENTS.md`.
