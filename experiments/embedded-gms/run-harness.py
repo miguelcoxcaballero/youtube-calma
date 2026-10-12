@@ -17,6 +17,31 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = 'es.inhouse.gmsprobe'
 
 
+def safe_dom_records(raw: str) -> list:
+    """Accept only the probe's fixed schema; reject any additional remote data."""
+    records = []
+    integers = {'progress', 'ready', 'emailInputs', 'visibleEmailInputs', 'passwordInputs', 'nonHiddenInputs', 'captchaInputs'}
+    routes = {'empty', 'other', 'google_identifier', 'google_challenge', 'google_setup', 'google_other'}
+    for line in raw.splitlines():
+        matched = re.search(r'\sEmbeddedGmsLoginProbe\s*:\s*(\{.*\})$', line)
+        if matched is None:
+            continue
+        try:
+            record = json.loads(matched[1])
+        except (ValueError, TypeError):
+            continue
+        if record == {'diagnosticFailure': True}:
+            pass
+        elif (set(record) != integers | {'visible', 'route'}
+              or any(type(record[key]) is not int or not -1 <= record[key] <= 1000 for key in integers)
+              or type(record['visible']) is not bool or type(record['route']) is not str
+              or record['route'] not in routes):
+            continue
+        if not records or records[-1] != record:
+            records.append(record)
+    return records
+
+
 def login_ui_structure(nodes) -> dict:
     """Classify a fresh login UI without retaining remote or user-entered text."""
     texts = {re.sub(r'\s+', ' ', (node.get(attribute) or '').casefold()).strip() for node in nodes
@@ -56,7 +81,7 @@ def login_ui_structure(nodes) -> dict:
 
 def structural_crash_log(raw: str) -> str:
     """Retain stack structure only, never upstream request/response bodies or URLs."""
-    result = []
+    result = ['login DOM structure: ' + json.dumps(record, sort_keys=True) for record in safe_dom_records(raw)]
     for line in raw.splitlines():
         entry = re.search(r'\s(?:AndroidRuntime|GmsAuthLoginBrowser|GmsCheckin(?:Client|Svc|Trigger)?)\s*:\s*(.*)', line)
         if entry is None: continue
@@ -157,9 +182,20 @@ def main() -> None:
             structure = login_ui_structure(ui_nodes())
             if not state['uiStates'] or state['uiStates'][-1] != structure:
                 state['uiStates'].append(structure)
+            dom_records = safe_dom_records(adb('logcat', '-d', '-s', 'EmbeddedGmsLoginProbe:I', '*:S').stdout)
+            if dom_records:
+                state['domStates'] = dom_records
+                dom = dom_records[-1]
+                if (dom.get('route') == 'google_identifier' and dom.get('visible')
+                        and dom.get('progress') == 100 and dom.get('ready') == 2
+                        and dom.get('visibleEmailInputs', 0) > 0 and dom.get('captchaInputs') == 0):
+                    state['googleCredentialEntryVisible'] = True
+                    state['credentialEntryEvidence'] = 'Google identifier route and email-input DOM structure'
+                    break
             if (structure['webViewVisible'] and structure['editableFieldCount'] > 0
                     and structure['credentialLabelOrIdRecognized'] and not structure['captchaPromptVisible']):
                 state['googleCredentialEntryVisible'] = True
+                state['credentialEntryEvidence'] = 'Recognized credential field in WebView accessibility tree'
                 break
             if structure['networkErrorVisible']:
                 state['networkErrorVisible'] = True

@@ -4,6 +4,7 @@ import android.accounts.AccountManager;
 import android.accounts.AuthenticatorDescription;
 import android.app.Activity;
 import android.app.Instrumentation;
+import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.ContentProviderClient;
 import android.content.Context;
@@ -12,12 +13,15 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import java.io.File;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,11 +75,37 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                     .getIdentifier("gms_app_name", "string", HOST) != 0);
             require("main Application remains unchanged after module preparation", context.getApplicationContext()
                     .getClass().getName().equals("com.google.android.apps.youtube.app.YouTubeTikTokRoot_Application"));
+            if (Build.VERSION.SDK_INT >= 34) {
+                String originalNamespace = context.getSystemService(JobScheduler.class).getNamespace();
+                require("backend jobs have their own Android scheduler namespace", "inhouse.microg".equals(
+                        backend.getSystemService(JobScheduler.class).getNamespace()));
+                require("host scheduler namespace stays unchanged", java.util.Objects.equals(originalNamespace,
+                        context.getSystemService(JobScheduler.class).getNamespace()));
+            }
             String preference = "inhouse-embedded-smoke";
             backend.getSharedPreferences(preference, Context.MODE_PRIVATE).edit().putBoolean("probe", true).commit();
             require("backend preferences do not collide with host", !context.getSharedPreferences(preference,
                     Context.MODE_PRIVATE).contains("probe"));
             backend.deleteSharedPreferences(preference);
+            File privateDatabase = new File(backend.getNoBackupFilesDir(), "inhouse-smoke.db");
+            require("Room absolute database path stays in private backend storage", backend.getDatabasePath(
+                    privateDatabase.getAbsolutePath()).getCanonicalFile().equals(privateDatabase.getCanonicalFile()));
+            try {
+                try (SQLiteDatabase database = backend.openOrCreateDatabase(privateDatabase.getAbsolutePath(),
+                        Context.MODE_PRIVATE, null)) {
+                    database.execSQL("CREATE TABLE IF NOT EXISTS smoke (value INTEGER)");
+                    database.execSQL("INSERT INTO smoke VALUES (17)");
+                    try (Cursor row = database.rawQuery("SELECT value FROM smoke", null)) {
+                        require("Room-style absolute private database opens and round-trips", row.moveToFirst()
+                                && row.getInt(0) == 17);
+                    }
+                }
+            } finally { backend.deleteDatabase(privateDatabase.getAbsolutePath()); }
+            require("private absolute test database deletes cleanly", !privateDatabase.exists());
+            boolean rejectedHostDatabase = false;
+            try { backend.getDatabasePath(context.getDatabasePath("inhouse-smoke-host.db").getAbsolutePath()); }
+            catch (SecurityException expected) { rejectedHostDatabase = true; }
+            require("absolute host database path remains inaccessible to backend wrapper", rejectedHostDatabase);
             CountDownLatch connected = new CountDownLatch(1);
             AtomicReference<IBinder> binder = new AtomicReference<>();
             ServiceConnection connection = new ServiceConnection() {

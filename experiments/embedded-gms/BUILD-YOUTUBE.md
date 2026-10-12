@@ -49,9 +49,11 @@ claims false until separate tests supply evidence. The wrapper checks that
 release catalogs, release identity and shared updater files stayed unchanged.
 
 The optional instrumentation and module payload remain inside the same APK.
-Neither the wrapper nor the runtime installs an external microG package. The
-runtime does not download executable code. External microG accounts and tokens
-are not copied into the new authenticator.
+The bootstrap loads microG from bundled assets; it never fetches or installs a
+separate microG app. Upstream Google authentication can obtain its normal
+challenge modules, preserving upstream verification and Android's read-only
+code requirements. External microG accounts and tokens are not copied into the
+new authenticator.
 
 CI compiles one disposable candidate, then tests that exact artifact on Android
 15 and 16 in parallel. Each runner verifies the APK against its shared build

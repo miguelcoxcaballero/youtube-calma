@@ -6,6 +6,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction31c
+import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -25,6 +26,43 @@ private fun Method.routeSignature(): String =
     "$definingClass->$name(${parameterTypes.joinToString("")})$returnType"
 
 /**
+ * Compile stubs cannot describe optimizer changes in the actual host DEX. In
+ * particular, this base makes CoreComponentFactory callbacks final even though
+ * ordinary AndroidX source allows overriding them. Catch the resulting runtime
+ * LinkageError before producing an APK. Platform ancestors absent from the DEX
+ * are checked by the android.jar compiler instead.
+ */
+private fun validateEmbeddedHostInheritance(hostClasses: Iterable<ClassDef>, resolve: (String) -> ClassDef?) {
+    fun Method.virtual() = name != "<init>" && name != "<clinit>" && accessFlags and (2 or 8) == 0
+    fun Method.prototype() = "$name(${parameterTypes.joinToString("")})$returnType"
+    fun packageName(type: String) = type.substringBeforeLast('/', "")
+
+    for (type in hostClasses) {
+        val virtualMethods = type.methods.filter { it.virtual() }.associateBy { it.prototype() }
+        val visited = linkedSetOf(type.type)
+        var ancestorName = type.superclass
+        while (ancestorName != null) {
+            check(visited.add(ancestorName)) { "Embedded host inheritance cycle: ${visited.joinToString(" -> ")} -> $ancestorName" }
+            val ancestor = resolve(ancestorName) ?: break
+            check(ancestor.accessFlags and 16 == 0) {
+                "Embedded host ${type.type} inherits final class ${ancestor.type} from actual DEX"
+            }
+            for (inherited in ancestor.methods) {
+                if (!inherited.virtual() || inherited.accessFlags and 16 == 0) continue
+                // A package-private method outside the subclass package is not
+                // inherited. Public/protected methods are inherited across it.
+                if (inherited.accessFlags and (1 or 4) == 0 &&
+                    packageName(inherited.definingClass) != packageName(type.type)) continue
+                val override = virtualMethods[inherited.prototype()] ?: continue
+                error("Embedded host method ${override.routeSignature()} overrides final inherited method " +
+                    "${inherited.routeSignature()} in actual DEX (flags=0x${inherited.accessFlags.toString(16)})")
+            }
+            ancestorName = ancestor.superclass
+        }
+    }
+}
+
+/**
  * Experimental, opt-in client routes for the EXACT base.lock.json APK.
  *
  * Normal compilation does not bundle the runtime and execute makes no changes.
@@ -38,6 +76,11 @@ val embeddedGmsClientPatch = bytecodePatch(name = "YouTube Calma experimental em
     if (System.getProperty("calma.embeddedGms") == "true") extendWith("embedded-host.dex")
     execute {
         if (System.getProperty("calma.embeddedGms") != "true") return@execute
+
+        val embeddedHostClasses = mutableListOf<ClassDef>()
+        classDefForEach { if (it.type.startsWith("Linhouse/microg/host/")) embeddedHostClasses.add(it) }
+        check(embeddedHostClasses.isNotEmpty()) { "Embedded host runtime DEX was not injected" }
+        validateEmbeddedHostInheritance(embeddedHostClasses) { classDefByOrNull(it) }
 
         fun method(signature: String): MutableMethod {
             val owner = signature.substringBefore("->")

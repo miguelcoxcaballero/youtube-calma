@@ -1,6 +1,7 @@
 package inhouse.microg.bridge;
 
 import android.content.Context;
+import android.app.job.JobScheduler;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -11,10 +12,12 @@ import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.view.Display;
 import android.view.LayoutInflater;
+import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,6 +28,7 @@ public final class BackendContext extends ContextWrapper {
     private final Resources resources;
     private Resources.Theme theme;
     private LayoutInflater inflater;
+    private JobScheduler jobScheduler;
     private Context applicationContext;
 
     BackendContext(Context base) {
@@ -55,6 +59,13 @@ public final class BackendContext extends ContextWrapper {
     }
     @Override public void setTheme(int id) { getTheme().applyStyle(id, true); }
     @Override public Object getSystemService(String name) {
+        if (JOB_SCHEDULER_SERVICE.equals(name) && Build.VERSION.SDK_INT >= 34) {
+            if (jobScheduler == null) {
+                JobScheduler original = (JobScheduler) super.getSystemService(name);
+                jobScheduler = original.forNamespace("inhouse.microg");
+            }
+            return jobScheduler;
+        }
         if (LAYOUT_INFLATER_SERVICE.equals(name)) {
             if (inflater == null) {
                 LayoutInflater original = (LayoutInflater) super.getSystemService(name);
@@ -108,16 +119,31 @@ public final class BackendContext extends ContextWrapper {
         Context base = source instanceof BackendContext ? ((BackendContext) source).getBaseContext() : source;
         return super.moveSharedPreferencesFrom(base, scoped(name));
     }
-    @Override public File getDatabasePath(String name) { return super.getDatabasePath(scoped(name)); }
+    private String databaseName(String supplied) {
+        if (supplied == null || !new File(supplied).isAbsolute()) return scoped(supplied);
+        // Room/WorkManager legitimately pass an absolute database path under the
+        // context's no-backup directory. Preserve that already namespaced path;
+        // never accept an absolute path into the host's other databases/files.
+        try {
+            File path = new File(supplied).getCanonicalFile();
+            for (File root : new File[]{getNoBackupFilesDir(), getFilesDir(), getCacheDir(), getCodeCacheDir()}) {
+                if (path.getPath().startsWith(root.getCanonicalPath() + File.separator)) return path.getPath();
+            }
+            File databases = super.getDatabasePath(PREFIX + "namespace-check").getParentFile().getCanonicalFile();
+            if (databases.equals(path.getParentFile()) && path.getName().startsWith(PREFIX)) return path.getPath();
+            throw new SecurityException("Absolute database path leaves backend storage");
+        } catch (IOException error) { throw new IllegalArgumentException("Cannot resolve backend database path", error); }
+    }
+    @Override public File getDatabasePath(String name) { return super.getDatabasePath(databaseName(name)); }
     @Override public SQLiteDatabase openOrCreateDatabase(String name, int mode,
             SQLiteDatabase.CursorFactory factory) {
-        return super.openOrCreateDatabase(scoped(name), mode, factory);
+        return super.openOrCreateDatabase(databaseName(name), mode, factory);
     }
     @Override public SQLiteDatabase openOrCreateDatabase(String name, int mode,
             SQLiteDatabase.CursorFactory factory, DatabaseErrorHandler errorHandler) {
-        return super.openOrCreateDatabase(scoped(name), mode, factory, errorHandler);
+        return super.openOrCreateDatabase(databaseName(name), mode, factory, errorHandler);
     }
-    @Override public boolean deleteDatabase(String name) { return super.deleteDatabase(scoped(name)); }
+    @Override public boolean deleteDatabase(String name) { return super.deleteDatabase(databaseName(name)); }
     @Override public boolean moveDatabaseFrom(Context source, String name) {
         Context base = source instanceof BackendContext ? ((BackendContext) source).getBaseContext() : source;
         return super.moveDatabaseFrom(base, scoped(name));
