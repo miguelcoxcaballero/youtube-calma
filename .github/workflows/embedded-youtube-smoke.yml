@@ -1,0 +1,129 @@
+name: Embedded YouTube single-APK smoke
+on:
+  workflow_dispatch:
+  push:
+    branches: ['codex/embedded-gms-prototype']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: embedded-youtube-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Select Java 21 for the pinned APK patcher
+        run: |
+          test -d "$JAVA_HOME_21_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+          "$JAVA_HOME_21_X64/bin/java" -version
+      - name: Prepare platform and existing build tools
+        run: |
+          "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"
+          python3 scripts/setup-tools.py --android-sdk "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+      - name: Fetch exact public inputs and verify hashes
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, urllib.parse, urllib.request
+          from pathlib import Path
+          root = Path.cwd()
+          base = json.loads((root / 'base.lock.json').read_text())
+          upstream = json.loads((root / 'experiments/embedded-gms/upstream.lock.json').read_text())
+          file_id = urllib.parse.urlparse(base['sourceUrl']).path.split('/d/', 1)[1].split('/', 1)[0]
+          drive_url = 'https://drive.usercontent.google.com/download?' + urllib.parse.urlencode({
+              'id': file_id, 'export': 'download', 'confirm': 't'})
+          inputs = [(drive_url, root / 'base/youtube-original.apk', base['sha256']),
+                    (upstream['apkUrl'], root / 'build/embedded-youtube-input/gmscore.apk', upstream['apkSha256'])]
+          for url, destination, expected in inputs:
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              temporary = destination.with_suffix('.partial')
+              try:
+                  digest = hashlib.sha256()
+                  with urllib.request.urlopen(url, timeout=120) as response, temporary.open('wb') as output:
+                      while chunk := response.read(1024 * 1024):
+                          digest.update(chunk)
+                          output.write(chunk)
+                  if digest.hexdigest() != expected:
+                      raise RuntimeError('Pinned input hash mismatch: ' + destination.name)
+                  temporary.replace(destination)
+              finally:
+                  temporary.unlink(missing_ok=True)
+          PY
+      - name: Build single-APK candidate with disposable test certificate
+        run: |
+          python3 experiments/embedded-gms/build-youtube.py \
+            --gms-apk build/embedded-youtube-input/gmscore.apk \
+            --morphe tools/morphe.jar \
+            --instrumentation --debug-signing
+      - name: Check manifest boundaries and pinned native inheritance
+        run: |
+          python3 -m unittest discover -s tests -p 'test_embedded*.py' -v
+          python3 scripts/test-embedded-inheritance.py --morphe tools/morphe.jar
+      - name: Share the exact test APK and build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: embedded-youtube-candidate
+          # Never upload the disposable keystore or the build work directory.
+          path: |
+            build/embedded-youtube/*-embedded-EXPERIMENTAL.apk
+            build/embedded-youtube/build-report.json
+            build/embedded-youtube/adapted-gmscore.report.json
+            build/embedded-youtube/work/embedded-res/host-registration-report.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+  android:
+    needs: candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 35, 36]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Download this run's immutable candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: embedded-youtube-candidate
+          path: build/embedded-youtube
+      - name: Enable emulator acceleration
+        run: sudo chmod 666 /dev/kvm
+      - name: Exercise actual YouTube without external microG
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          output = Path('build/embedded-youtube')
+          report = json.loads((output / 'build-report.json').read_text())
+          if not report['debugSigning'] or not report['instrumentationIncluded'] or report['productionRelease']:
+              raise RuntimeError('CI requires an instrumented, disposable test build')
+          apk = output / report['apk']
+          with apk.open('rb') as stream:
+              if hashlib.file_digest(stream, 'sha256').hexdigest() != report['apkSha256']:
+                  raise RuntimeError('Candidate differs from its immutable build report')
+          command = ['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
+                     '--api', '${{ matrix.api }}', '--apk', str(apk),
+                     '--output-dir', str(output / 'evidence'), '--diagnostic-stacks']
+          if '${{ matrix.api }}' == '34':
+              command.append('--disable-official-gms')
+          subprocess.run(command, check=True)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: embedded-youtube-api-${{ matrix.api }}
+          path: |
+            build/embedded-youtube/evidence/
+            build/embedded-youtube/build-report.json
+            build/embedded-youtube/adapted-gmscore.report.json
+            build/embedded-youtube/work/embedded-res/host-registration-report.json
+          retention-days: 7

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Experimental harness only. Never install or sign this as YouTube Calma. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="es.inhouse.gmsprobe" android:versionCode="1" android:versionName="probe-1">
+    <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="35" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <queries>
+        <package android:name="app.revanced.android.gms" />
+        <package android:name="com.mgoogle.android.gms" />
+        <package android:name="com.google.android.gms" />
+    </queries>
+    <application android:name="es.inhouse.gmsprobe.ProbeApplication"
+        android:appComponentFactory="inhouse.microg.prototype.PrototypeComponentFactory"
+        android:label="@string/probe_label" android:theme="@android:style/Theme.Material.NoActionBar"
+        android:debuggable="true" android:allowBackup="false">
+        <activity android:name="es.inhouse.gmsprobe.ProbeActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- The upstream authority/account type is only safe on these fresh test devices.
+             Production needs its own namespace and an explicit client migration. -->
+        <provider android:name="inhouse.microg.bridge.GServicesProviderBridge"
+            android:authorities="app.revanced.android.gsf.gservices" android:process=":microg"
+            android:exported="false" />
+        <service android:name="inhouse.microg.bridge.GetTokenServiceBridge"
+            android:process=":microg" android:exported="false">
+            <intent-filter><action android:name="com.google.android.gms.auth.GetToken" /></intent-filter>
+        </service>
+        <service android:name="inhouse.microg.bridge.LoginServiceBridge"
+            android:process=":microg" android:exported="true"
+            android:permission="android.permission.BIND_ACCOUNT_AUTHENTICATOR">
+            <intent-filter><action android:name="android.accounts.AccountAuthenticator" /></intent-filter>
+            <meta-data android:name="android.accounts.AccountAuthenticator"
+                android:resource="@xml/authenticator" />
+        </service>
+    </application>
+    <instrumentation android:name="es.inhouse.gmsprobe.ProbeInstrumentation"
+        android:targetPackage="es.inhouse.gmsprobe" android:label="Embedded components only" />
+</manifest>

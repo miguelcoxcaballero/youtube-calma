@@ -1,0 +1,388 @@
+{
+  "api": 34,
+  "package": "app.revanced.android.youtube",
+  "productionRelease": false,
+  "googleLoginTested": false,
+  "youtubePlaybackTested": false,
+  "pushDeliveryTested": false,
+  "accountsOrCredentialsSupplied": false,
+  "googleCredentialEntryVisible": true,
+  "scope": "actual YouTube APK, embedded component bootstrap, credential-free sign-in entry",
+  "apkSha256": "81c26ab3201608c1f480fa0a6f84cdb54a6d12cc5ee25ac32bf3bcfe96177398",
+  "externalMicrogAbsentBefore": true,
+  "officialGooglePlayServicesPresent": true,
+  "officialGooglePlayServicesDisabled": true,
+  "onlyCandidateApkInstalled": true,
+  "mainProcessStayedAliveAfterLaunch": true,
+  "instrumentationProcessCrashed": false,
+  "instrumentationFinalCodeSeen": false,
+  "instrumentationPhases": [
+    "on_create",
+    "on_start",
+    "prepare_backend_context",
+    "parcelable_recreation",
+    "bind_token_service",
+    "manifest_receiver_round_trip",
+    "provider_checks",
+    "droidguard_process_boundary",
+    "main_webview",
+    "account_manager_add",
+    "launch_login",
+    "completed"
+  ],
+  "incompleteComponentChecks": [
+    {
+      "name": "target is real YouTube package",
+      "passed": true
+    },
+    {
+      "name": "main process uses original YouTube Application",
+      "passed": true
+    },
+    {
+      "name": "external ReVanced microG absent",
+      "passed": true
+    },
+    {
+      "name": "external Vanced microG absent",
+      "passed": true
+    },
+    {
+      "name": "test account store is empty",
+      "passed": true
+    },
+    {
+      "name": "wrapped context keeps real installed identity",
+      "passed": true
+    },
+    {
+      "name": "module resources resolve independently",
+      "passed": true
+    },
+    {
+      "name": "normalized remote context retains module resources",
+      "passed": true
+    },
+    {
+      "name": "main Application remains unchanged after module preparation",
+      "passed": true
+    },
+    {
+      "name": "saved-state recreation restores isolated module Parcelable",
+      "passed": true
+    },
+    {
+      "name": "nested saved-state recreation preserves module Parcelable loader",
+      "passed": true
+    },
+    {
+      "name": "saved-state isolation preserves framework Parcelable",
+      "passed": true
+    },
+    {
+      "name": "intent recreation restores isolated module Parcelable",
+      "passed": true
+    },
+    {
+      "name": "intent isolation preserves framework Parcelable",
+      "passed": true
+    },
+    {
+      "name": "backend jobs have their own Android scheduler namespace",
+      "passed": true
+    },
+    {
+      "name": "host scheduler namespace stays unchanged",
+      "passed": true
+    },
+    {
+      "name": "backend preferences do not collide with host",
+      "passed": true
+    },
+    {
+      "name": "Room absolute database path stays in private backend storage",
+      "passed": true
+    },
+    {
+      "name": "Room-style absolute private database opens and round-trips",
+      "passed": true
+    },
+    {
+      "name": "private absolute test database deletes cleanly",
+      "passed": true
+    },
+    {
+      "name": "absolute host database path remains inaccessible to backend wrapper",
+      "passed": true
+    },
+    {
+      "name": "token service binds",
+      "passed": true
+    },
+    {
+      "name": "token Binder exposes upstream protocol",
+      "passed": true
+    },
+    {
+      "name": "actual manifest receiver delivers isolated backend status",
+      "passed": true
+    },
+    {
+      "name": "backend survives framework manifest receiver delivery",
+      "passed": true
+    },
+    {
+      "name": "private owned provider: app.revanced.android.youtube.inhouse.gms.gservices",
+      "passed": true
+    },
+    {
+      "name": "private owned provider: app.revanced.android.youtube.inhouse.gms.auth.accounts",
+      "passed": true
+    },
+    {
+      "name": "real GServices provider starts",
+      "passed": true
+    },
+    {
+      "name": "real GServices query returns",
+      "passed": true
+    },
+    {
+      "name": "Android registers owned embedded authenticator",
+      "passed": true
+    },
+    {
+      "name": "real account provider starts",
+      "passed": true
+    },
+    {
+      "name": "account provider accepts real host caller",
+      "passed": true
+    },
+    {
+      "name": "DroidGuard preserves a separate private backend process",
+      "passed": true
+    },
+    {
+      "name": "isolated DroidGuard service binds",
+      "passed": true
+    },
+    {
+      "name": "DroidGuard exposes remote upstream broker",
+      "passed": true
+    },
+    {
+      "name": "main process initializes WebView before backend login",
+      "passed": true
+    },
+    {
+      "name": "AccountManager returns owned embedded login intent",
+      "passed": true
+    },
+    {
+      "name": "account-add intent carries Android authenticator response",
+      "passed": true
+    },
+    {
+      "name": "real account-add login activity launch requested",
+      "passed": true
+    }
+  ],
+  "components": {
+    "googleLoginTested": false,
+    "youtubePlaybackTested": false,
+    "pushDeliveryTested": false,
+    "accountsOrCredentialsSupplied": false,
+    "accountManagerAddAccountEntryExercised": true,
+    "passed": true,
+    "checks": [
+      {
+        "name": "target is real YouTube package",
+        "passed": true
+      },
+      {
+        "name": "main process uses original YouTube Application",
+        "passed": true
+      },
+      {
+        "name": "external ReVanced microG absent",
+        "passed": true
+      },
+      {
+        "name": "external Vanced microG absent",
+        "passed": true
+      },
+      {
+        "name": "test account store is empty",
+        "passed": true
+      },
+      {
+        "name": "wrapped context keeps real installed identity",
+        "passed": true
+      },
+      {
+        "name": "module resources resolve independently",
+        "passed": true
+      },
+      {
+        "name": "normalized remote context retains module resources",
+        "passed": true
+      },
+      {
+        "name": "main Application remains unchanged after module preparation",
+        "passed": true
+      },
+      {
+        "name": "saved-state recreation restores isolated module Parcelable",
+        "passed": true
+      },
+      {
+        "name": "nested saved-state recreation preserves module Parcelable loader",
+        "passed": true
+      },
+      {
+        "name": "saved-state isolation preserves framework Parcelable",
+        "passed": true
+      },
+      {
+        "name": "intent recreation restores isolated module Parcelable",
+        "passed": true
+      },
+      {
+        "name": "intent isolation preserves framework Parcelable",
+        "passed": true
+      },
+      {
+        "name": "backend jobs have their own Android scheduler namespace",
+        "passed": true
+      },
+      {
+        "name": "host scheduler namespace stays unchanged",
+        "passed": true
+      },
+      {
+        "name": "backend preferences do not collide with host",
+        "passed": true
+      },
+      {
+        "name": "Room absolute database path stays in private backend storage",
+        "passed": true
+      },
+      {
+        "name": "Room-style absolute private database opens and round-trips",
+        "passed": true
+      },
+      {
+        "name": "private absolute test database deletes cleanly",
+        "passed": true
+      },
+      {
+        "name": "absolute host database path remains inaccessible to backend wrapper",
+        "passed": true
+      },
+      {
+        "name": "token service binds",
+        "passed": true
+      },
+      {
+        "name": "token Binder exposes upstream protocol",
+        "passed": true
+      },
+      {
+        "name": "actual manifest receiver delivers isolated backend status",
+        "passed": true
+      },
+      {
+        "name": "backend survives framework manifest receiver delivery",
+        "passed": true
+      },
+      {
+        "name": "private owned provider: app.revanced.android.youtube.inhouse.gms.gservices",
+        "passed": true
+      },
+      {
+        "name": "private owned provider: app.revanced.android.youtube.inhouse.gms.auth.accounts",
+        "passed": true
+      },
+      {
+        "name": "real GServices provider starts",
+        "passed": true
+      },
+      {
+        "name": "real GServices query returns",
+        "passed": true
+      },
+      {
+        "name": "Android registers owned embedded authenticator",
+        "passed": true
+      },
+      {
+        "name": "real account provider starts",
+        "passed": true
+      },
+      {
+        "name": "account provider accepts real host caller",
+        "passed": true
+      },
+      {
+        "name": "DroidGuard preserves a separate private backend process",
+        "passed": true
+      },
+      {
+        "name": "isolated DroidGuard service binds",
+        "passed": true
+      },
+      {
+        "name": "DroidGuard exposes remote upstream broker",
+        "passed": true
+      },
+      {
+        "name": "main process initializes WebView before backend login",
+        "passed": true
+      },
+      {
+        "name": "AccountManager returns owned embedded login intent",
+        "passed": true
+      },
+      {
+        "name": "account-add intent carries Android authenticator response",
+        "passed": true
+      },
+      {
+        "name": "real account-add login activity launch requested",
+        "passed": true
+      }
+    ]
+  },
+  "signInActivityLaunchRequested": true,
+  "embeddedSignInIntroVisible": true,
+  "loginUiStructure": {
+    "nodeCount": 46,
+    "webViewVisible": true,
+    "editableFieldCount": 1,
+    "passwordFieldCount": 0,
+    "usableIdentifierFieldCount": 1,
+    "credentialLabelOrIdRecognized": true,
+    "emailWordVisible": true,
+    "phoneWordVisible": false,
+    "signInHeadingVisible": true,
+    "forgotEmailVisible": true,
+    "captchaPromptVisible": false,
+    "progressIndicatorVisible": true,
+    "connectingMessageVisible": true,
+    "justASecVisible": true,
+    "sorryVisible": false,
+    "nextButtonVisible": true,
+    "networkErrorVisible": false,
+    "credentialEntryLayoutRecognized": true
+  },
+  "externalMicrogAbsentAfter": true,
+  "passed": true,
+  "provenance": {
+    "sourceCommit": "842d92cbb8d6727e34aa8ebbb6c61b8632a38ff0",
+    "runnerCommit": "1bba38864b26d7d99121ec8ce2cc724aa81a97d6",
+    "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38264289394",
+    "candidateWorkflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38262302577",
+    "candidateKind": "disposable certificate; same-APK instrumentation"
+  }
+}

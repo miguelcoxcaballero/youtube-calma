@@ -1,0 +1,4 @@
+<resources>
+    <string name="account_label">Embedded microG probe account</string>
+    <string name="probe_label">Embedded microG probe</string>
+</resources>

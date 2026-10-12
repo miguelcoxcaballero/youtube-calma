@@ -1,0 +1,23 @@
+Embedded microG component probe — third-party provenance
+
+The original ReVanced GmsCore APK is included without modification as a
+non-installable runtime asset in this experimental probe. It is not a YouTube
+release. The original APK resource and dependency notices remain intact.
+
+Upstream: https://github.com/ReVanced/GmsCore
+Project: https://github.com/microg/GmsCore
+Release: v0.3.13.2.250932
+Asset: app.revanced.android.gms-250932004-signed.apk
+SHA-256: 62119f040d629a9cd3225f280649a464936730c6466cafb5b9dd5ded14269a65
+Source: https://github.com/ReVanced/GmsCore/tree/v0.3.13.2.250932
+
+microG code is licensed under Apache License 2.0. Some upstream resource assets
+are licensed under CC BY 4.0 or CC0. The license texts are included alongside
+this notice. Third-party dependencies retain their original licenses and notices
+inside the unmodified upstream artifact and its source tree.
+
+The application loader and bridge sources are a separate experimental integration,
+not endorsed by microG or ReVanced. Compile-only component stubs are excluded from
+the application DEX. No Google account credentials are supplied to this probe.
+Never run real sign-in while collecting its full diagnostic logs: the upstream
+version has credential-bearing logging that requires a separate security fix.

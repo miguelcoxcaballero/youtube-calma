@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "project": "ReVanced GmsCore",
+  "sourceRepository": "https://github.com/ReVanced/GmsCore",
+  "sourceCommit": "80bfe22cfaf0de84b6c1e96fe3435877d3b9e08c",
+  "tag": "v0.3.13.2.250932",
+  "apkUrl": "https://github.com/ReVanced/GmsCore/releases/download/v0.3.13.2.250932/app.revanced.android.gms-250932004-signed.apk",
+  "apkSha256": "62119f040d629a9cd3225f280649a464936730c6466cafb5b9dd5ded14269a65",
+  "apkPackage": "app.revanced.android.gms",
+  "apkVersionCode": 250932004,
+  "apkTargetSdk": 29,
+  "sourceLicense": "Apache-2.0",
+  "status": "experimental-native-youtube-candidate"
+}

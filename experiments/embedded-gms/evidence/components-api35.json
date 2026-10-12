@@ -1,0 +1,132 @@
+{
+  "api": 35,
+  "googleLoginTested": false,
+  "youtubePlaybackTested": false,
+  "pushDeliveryTested": false,
+  "accountsOrCredentialsSupplied": false,
+  "productionRelease": false,
+  "apkSha256": "15687e06e6a71f2520af350ecd39b57ee4052000f6e486b8949b3c300a81dedb",
+  "externalMicrogAbsentBefore": true,
+  "officialGooglePlayServicesPresent": true,
+  "components": {
+    "googleLoginTested": false,
+    "youtubePlaybackTested": false,
+    "pushDeliveryTested": false,
+    "accountsOrCredentialsSupplied": false,
+    "scope": "same-APK class/resources/provider/authenticator/Binder plumbing",
+    "resourceLookup": {
+      "compiledLabelId": "7f120132",
+      "assetLocaleCount": 134,
+      "app.revanced.android.gms": 2131886386,
+      "com.google.android.gms": 0,
+      "android": 0,
+      "es.inhouse.gmsprobe": 0,
+      "actualPackage": "app.revanced.android.gms",
+      "compiledLabelText": "microG Services"
+    },
+    "backendLabel": "microG Services",
+    "passed": true,
+    "checks": [
+      {
+        "name": "external package absent: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "external package absent: com.mgoogle.android.gms",
+        "passed": true
+      },
+      {
+        "name": "backend classes use isolated loader",
+        "passed": true
+      },
+      {
+        "name": "backend classes absent from host loader",
+        "passed": true
+      },
+      {
+        "name": "backend Kotlin library isolated",
+        "passed": true
+      },
+      {
+        "name": "original backend resource table resolves by name",
+        "passed": true
+      },
+      {
+        "name": "original backend resources readable",
+        "passed": true
+      },
+      {
+        "name": "host resources remain isolated",
+        "passed": true
+      },
+      {
+        "name": "system resources unmodified: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "host resources exclude backend: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "system resources unmodified: com.google.android.gms",
+        "passed": true
+      },
+      {
+        "name": "host resources exclude backend: com.google.android.gms",
+        "passed": true
+      },
+      {
+        "name": "provider belongs to only installed probe APK",
+        "passed": true
+      },
+      {
+        "name": "provider uses separate backend process",
+        "passed": true
+      },
+      {
+        "name": "real Gservices provider stores value",
+        "passed": true
+      },
+      {
+        "name": "real Gservices provider reads stored value",
+        "passed": true
+      },
+      {
+        "name": "auth Binder descriptor is real upstream interface",
+        "passed": true
+      },
+      {
+        "name": "auth Binder getChangeEvents transaction accepted",
+        "passed": true
+      },
+      {
+        "name": "auth Binder returns parcelable response",
+        "passed": true
+      },
+      {
+        "name": "auth response deserializes through upstream CREATOR",
+        "passed": true
+      },
+      {
+        "name": "auth response Parcel fully consumed",
+        "passed": true
+      },
+      {
+        "name": "auth response contains expected empty event list",
+        "passed": true
+      },
+      {
+        "name": "Android AccountManager registers embedded authenticator",
+        "passed": true
+      },
+      {
+        "name": "login Binder is real Android authenticator",
+        "passed": true
+      }
+    ]
+  },
+  "onlyProbeApkInstalled": true,
+  "passed": true,
+  "sourceCommit": "db5f29bd146c43b041f8eea316343ffefddfedcd",
+  "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38248074063"
+}
