@@ -55,18 +55,27 @@ public final class ProbeInstrumentation extends Instrumentation {
             catch (ClassNotFoundException expected) { }
             check("backend classes absent from host loader", !leaked);
             check("backend Kotlin library isolated", isolated.loadClass("kotlin.Unit").getClassLoader() == isolated);
-            int backendLabelId = runtime.resources().getIdentifier("gms_app_name", "string", "app.revanced.android.gms");
+            int originalLabelId = isolated.loadClass("com.google.android.gms.R$string").getField("gms_app_name").getInt(null);
+            JSONObject resourceLookup = new JSONObject().put("compiledLabelId", Integer.toHexString(originalLabelId))
+                .put("assetLocaleCount", runtime.resources().getAssets().getLocales().length);
+            for (String candidate : new String[]{"app.revanced.android.gms", "com.google.android.gms", "android", context.getPackageName()}) {
+                resourceLookup.put(candidate, runtime.resources().getIdentifier("gms_app_name", "string", candidate));
+            }
+            report.put("resourceLookup", resourceLookup);
+            String resourcePackage = runtime.resources().getResourcePackageName(originalLabelId);
+            resourceLookup.put("actualPackage", resourcePackage).put("compiledLabelText", runtime.resources().getString(originalLabelId));
+            int backendLabelId = runtime.resources().getIdentifier("gms_app_name", "string", resourcePackage);
             check("original backend resource table resolves by name", backendLabelId != 0);
             String label = runtime.resources().getString(backendLabelId);
             check("original backend resources readable", "microG Services".equals(label));
             report.put("backendLabel", label);
             int hostLabelId = context.getResources().getIdentifier("probe_label", "string", context.getPackageName());
             check("host resources remain isolated", hostLabelId != 0 && "Embedded microG probe".equals(context.getResources().getString(hostLabelId)));
-            for (String resourcePackage : new String[]{"app.revanced.android.gms", "com.google.android.gms"}) {
-                check("system resources unmodified: " + resourcePackage,
-                    android.content.res.Resources.getSystem().getIdentifier("google_account_label", "string", resourcePackage) == 0);
-                check("host resources exclude backend: " + resourcePackage,
-                    context.getResources().getIdentifier("google_account_label", "string", resourcePackage) == 0);
+            for (String backendPackage : new String[]{"app.revanced.android.gms", "com.google.android.gms"}) {
+                check("system resources unmodified: " + backendPackage,
+                    android.content.res.Resources.getSystem().getIdentifier("google_account_label", "string", backendPackage) == 0);
+                check("host resources exclude backend: " + backendPackage,
+                    context.getResources().getIdentifier("google_account_label", "string", backendPackage) == 0);
             }
             ProviderInfo provider = context.getPackageManager().resolveContentProvider("app.revanced.android.gsf.gservices", 0);
             check("provider belongs to only installed probe APK", provider != null && provider.packageName.equals(context.getPackageName()));
