@@ -1,11 +1,13 @@
 
 
 
-# Embedded microG release source (0.1.13 · A)
+# Embedded microG release source (0.1.14 · B and A)
 
-The user explicitly authorized the experimental embedded-microG APK on A. Its source is tag `v0.1.13`, commit `61ff3d3bce37e72b6e628bd9c6be821ef7243dfc` on `release-youtube-0.1.13-a`; use that checkout and `experiments/embedded-gms/build-youtube.py` for subsequent embedded builds. `main` retains the external-microG build sources and publishes the channel catalogs. Do not rebuild a future A from `main/scripts/build.py` and silently restore the companion-app dependency. Integrate the embedded source deliberately before changing its runtime.
+The user explicitly requested B after reporting successful sign-in on their Galaxy S24 Ultra. The 0.1.14 source is tag `v0.1.14`, commit `c25edeac7bcfd2ceba591c3416dd01cc50d26788` on `release-youtube-0.1.14-b`; use that checkout and `experiments/embedded-gms/build-youtube.py` for subsequent embedded builds. `main` retains the external-microG build sources and publishes the channel catalogs. Do not rebuild a future release from `main/scripts/build.py` and silently restore the companion-app dependency. Integrate the embedded source deliberately before changing its runtime.
 
-The experimental APK requires Android 14+ and a fresh Google sign-in. Credential-entry/component checks are distinct from completed sign-in, authenticated playback, token renewal and push delivery; those real-account behaviors remain unverified. The release does not promote the experiment to B. Consult both public catalogs before selecting the next global versionCode; `main`'s older `CalmaBuild.java` is not the latest A release source. Keep the original package and permanent signing key. Keep `app/assets/updates/config.json` installedVersion equal to `CalmaBuild.VERSION`; the embedded builder and artifact checks enforce this.
+The APK requires Android 14+. Switching from external microG requires a fresh Google sign-in. Automated credential-entry/component checks are distinct from the user's reported sign-in success; authenticated playback, token renewal and push delivery remain unverified. Consult both public catalogs before selecting the next global versionCode; `main`'s older `CalmaBuild.java` is not the latest release source. Keep the original package and permanent signing key. Keep `app/assets/updates/config.json` installedVersion equal to `CalmaBuild.VERSION`; the embedded builder and artifact checks enforce this.
+
+The 0.1.14 catalog changelog is also the pre-update notice shown by existing clients: “Android 14+. Built-in microG: sign in again after updating. If sign-in fails, wait 30 minutes and retry.” It must be visible before Update, not hidden in Details. This is release metadata, not a fork of the canonical updater. Never rewrite an older release's immutable changelog. The 30-minute retry guidance is the user's requested advice, not a guarantee that Google will approve a later attempt. Existing embedded-microG accounts from 0.1.13 are retained; this fresh-login notice addresses the migration from external microG.
 
 # APK release identity (regression in 0.1.6)
 

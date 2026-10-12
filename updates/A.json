@@ -2,15 +2,24 @@
   "schemaVersion": 1,
   "channel": "A",
   "latest": {
-    "version": "0.1.13",
-    "versionCode": 1557278158,
-    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.13/YouTube-Calma-0.1.13.apk",
-    "apkSha256": "4f3a2e0e9c777735f44b0feae472a917e190d2964a76c35f1ee62f00133e56ad",
+    "version": "0.1.14",
+    "versionCode": 1557278159,
+    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.14/YouTube-Calma-0.1.14.apk",
+    "apkSha256": "ccc160caab94c66aedf9a781cbe58ec837a0e7c1755c77a046ca83bc6f1ed932",
     "apkSizeBytes": 285771506,
-    "changelog": "Experimental built-in microG. Android 14+.",
-    "releasedAt": "2026-10-12T15:40:42+00:00"
+    "changelog": "Android 14+. Built-in microG: sign in again after updating. If sign-in fails, wait 30 minutes and retry.",
+    "releasedAt": "2026-10-12T20:41:58+00:00"
   },
   "releases": [
+    {
+      "version": "0.1.14",
+      "versionCode": 1557278159,
+      "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.14/YouTube-Calma-0.1.14.apk",
+      "apkSha256": "ccc160caab94c66aedf9a781cbe58ec837a0e7c1755c77a046ca83bc6f1ed932",
+      "apkSizeBytes": 285771506,
+      "changelog": "Android 14+. Built-in microG: sign in again after updating. If sign-in fails, wait 30 minutes and retry.",
+      "releasedAt": "2026-10-12T20:41:58+00:00"
+    },
     {
       "version": "0.1.13",
       "versionCode": 1557278158,
