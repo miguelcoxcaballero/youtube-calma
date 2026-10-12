@@ -39,10 +39,25 @@ def login_ui_structure(nodes) -> dict:
     credential = credential or any(re.search(r'\be-?mail(?: address)?\b', text) for text in editable_texts)
     credential = credential or any((node.get('resource-id') or '').split('/')[-1] == 'identifierId'
                                    for node in nodes)
-    return {
+    web_nodes = {child for node in nodes if node.get('class') == 'android.webkit.WebView'
+                 for child in node.iter('node')}
+    web_texts = {re.sub(r'\s+', ' ', (node.get(attribute) or '').casefold()).strip()
+                 for node in web_nodes for attribute in ('text', 'content-desc', 'hint')}
+
+    def usable_field(node):
+        bounds = re.fullmatch(r'\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]', node.get('bounds', ''))
+        if bounds is None:
+            return False
+        left, top, right, bottom = map(int, bounds.groups())
+        return (right > left and bottom > top and node.get('enabled') == 'true'
+                and node.get('focusable') == 'true' and node.get('password') != 'true')
+
+    structure = {
         'nodeCount': len(nodes),
         'webViewVisible': any(node.get('class') == 'android.webkit.WebView' for node in nodes),
         'editableFieldCount': len(editable),
+        'passwordFieldCount': sum(node.get('password') == 'true' for node in editable),
+        'usableIdentifierFieldCount': sum(usable_field(node) and node in web_nodes for node in editable),
         'credentialLabelOrIdRecognized': credential,
         'emailWordVisible': any(re.search(r'\be-?mail\b', text) for text in texts),
         'phoneWordVisible': any(re.search(r'\bphone\b', text) for text in texts),
@@ -59,6 +74,22 @@ def login_ui_structure(nodes) -> dict:
         'networkErrorVisible': any('problem communicating with google servers' in text
                                   or 'check your network connection' in text for text in texts),
     }
+    # Some Google identifier pages expose an empty editable node without its
+    # HTML label. Require the complete sign-in schema inside the same WebView;
+    # a generic input, a password/challenge or the native loading screen is not
+    # sufficient. Report this separately from actual label/identifier evidence.
+    structure['credentialEntryLayoutRecognized'] = (
+        len(editable) == 1 and structure['usableIdentifierFieldCount'] == 1
+        and {'sign in', 'next'} <= web_texts and bool({'forgot email', 'forgot email?'} & web_texts)
+        and not structure['captchaPromptVisible'] and not structure['networkErrorVisible'])
+    return structure
+
+
+def credential_page_visible(structure: dict) -> bool:
+    return (structure['webViewVisible'] and structure['usableIdentifierFieldCount'] > 0
+            and structure['passwordFieldCount'] == 0
+            and (structure['credentialLabelOrIdRecognized'] or structure['credentialEntryLayoutRecognized'])
+            and not structure['captchaPromptVisible'] and not structure['networkErrorVisible'])
 
 
 def structural_log(raw: str) -> str:
@@ -303,8 +334,7 @@ def main() -> None:
                     current = nodes()
                     structure = login_ui_structure(current)
                     report['loginUiStructure'] = structure
-                    if (structure['webViewVisible'] and structure['editableFieldCount'] > 0
-                            and structure['credentialLabelOrIdRecognized'] and not structure['captchaPromptVisible']):
+                    if credential_page_visible(structure):
                         report['googleCredentialEntryVisible'] = True
                         break
                     if structure['networkErrorVisible']:
