@@ -1,6 +1,12 @@
 
 
 
+# Embedded microG release source (0.1.13 · A)
+
+The user explicitly authorized the experimental embedded-microG APK on A. Its source is tag `v0.1.13`, commit `61ff3d3bce37e72b6e628bd9c6be821ef7243dfc` on `release-youtube-0.1.13-a`; use that checkout and `experiments/embedded-gms/build-youtube.py` for subsequent embedded builds. `main` retains the external-microG build sources and publishes the channel catalogs. Do not rebuild a future A from `main/scripts/build.py` and silently restore the companion-app dependency. Integrate the embedded source deliberately before changing its runtime.
+
+The experimental APK requires Android 14+ and a fresh Google sign-in. Credential-entry/component checks are distinct from completed sign-in, authenticated playback, token renewal and push delivery; those real-account behaviors remain unverified. The release does not promote the experiment to B. Consult both public catalogs before selecting the next global versionCode; `main`'s older `CalmaBuild.java` is not the latest A release source. Keep the original package and permanent signing key. Keep `app/assets/updates/config.json` installedVersion equal to `CalmaBuild.VERSION`; the embedded builder and artifact checks enforce this.
+
 # APK release identity (regression in 0.1.6)
 
 `CalmaBuild.java` is the sole release version/code source. The patch compiler generates its constants; never put an independent release code in `YouTubeCalma.kt`. Before advertising an update, decode the SIGNED APK and verify its Android versionCode and `es.calma.version` metadata against the catalog. `adb install -r` can accept the same code and is insufficient: require a strictly greater actual code than the previous APK. Run `tests/artifact.py` and the Android upgrade-from-0.1.5 check. Keep the shared installer's strict version, hash, package and signature checks unchanged.
