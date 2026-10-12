@@ -33,6 +33,34 @@ Before enabling the module in YouTube, test the signed candidate on recent Andro
 
 The existing `scripts/runtime-check.py` installs external microG. Its success cannot establish that YouTube works independently. The component experiment has a separate workflow and report; it must explicitly report authenticated testing as unperformed until real evidence exists.
 
+## Opt-in native YouTube integration
+
+`build-youtube.py` now builds an unpublished native YouTube candidate. See
+[BUILD-YOUTUBE.md](BUILD-YOUTUBE.md) for the exact command. Both new patches are
+inactive unless `-Dcalma.embeddedGms=true` is set; the ordinary release path and
+catalogs remain unchanged. The experimental build keeps the current version code,
+so it is not an updater release and must not be announced as a newer version.
+
+`prepare-backend.py` pins and adapts upstream code, preserves Binder protocols and
+resource IDs, wraps Android component contexts, removes sensitive auth/check-in
+logs, and relocates the seven component names that collide with YouTube. The
+isolated module lives inside the host APK and is never separately installed or
+downloaded. `prepare-host.py` registers the private services, providers and Android
+authenticator under YouTube's real UID. It omits unrelated providers and account
+types, uses a separate account type, and supplies host-owned metadata resources.
+
+`youtube-runtime/` keeps YouTube's original Application in its normal processes;
+only `:inhouse_gms` uses the embedded backend Application. Bundled executable assets
+are hash verified and read-only. Module files, databases and preferences have
+separate names. This design does not read or migrate another app's credentials.
+Fresh authentication is required after a future supported migration.
+
+The optional same-APK instrumentation and `run-youtube-smoke.py` test the real
+YouTube candidate without external microG. Their reports explicitly separate
+component availability and a credential-free login page from a completed login,
+authenticated playback, token refresh and notification delivery. The latter
+still require real device/account evidence before publication.
+
 ## Verified component result
 
 Commit `db5f29bd146c43b041f8eea316343ffefddfedcd` passed all 24 component checks on Android API 35 and 36 in [run 38248074063](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38248074063). Both devices had official Google Play Services, neither had external microG, and the probe was the only newly installed package. The tests covered isolated code/resources, the actual GServices provider, Android authenticator registration and a real Binder/Parcelable round trip. Credential-free reports are preserved in `evidence/components-api35.json` and `evidence/components-api36.json`.

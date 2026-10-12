@@ -10,7 +10,8 @@ embedded authentication. Obfuscated names below apply only to this exact input:
 
 Methods were located in the actual DEX using `scripts/DexFind.java`, extracted
 with dexlib2 and inspected with JADX 1.5.6. Entries describe observed code;
-adaptations are requirements for the experiment, not implemented claims.
+adaptations identify integration requirements. The opt-in implementation below
+implements selected routes; the table alone does not establish runtime behavior.
 
 | DEX class/method | Observed behavior | Embedded integration requirement |
 | --- | --- | --- |
@@ -33,8 +34,11 @@ adaptations are requirements for the experiment, not implemented claims.
 
 `Lqiz;->d(Context,I)V` is already an empty method in this base. That does not
 remove the explicit token service, account provider or package-context paths.
-JADX could not reconstruct `qiz.b(Context,int)` reliably; no behavioral claim
-about that method is based on its failed Java output.
+JADX could not reconstruct `qiz.b(Context,int)` reliably. Direct inspection of
+its DEX shows that its first instructions are `const v0, 0; return v0`; subsequent
+external availability/signature code is unreachable in this base. The experiment
+does not add that bypass, and does not treat its zero result as backend health.
+The embedded startup adapter instead invokes a real provider/Binder health check.
 
 ## Backend boundary relevant to a shared installed package
 
@@ -96,3 +100,49 @@ Runtime validation remains necessary on a device without external microG:
 component/provider ownership, Binder and parcelable round trips, sign-in/token
 recovery, authenticated subscriptions/playback, background notification delivery,
 upgrade behavior, and coexistence with a separately installed old authenticator.
+
+
+## Implemented opt-in client patch
+
+`patches/EmbeddedGms.kt` is enabled only by `-Dcalma.embeddedGms=true`. Its
+runtime extension is bundled only in that mode. The ordinary build leaves these
+routes and the external dependency check unchanged.
+
+The pinned patch verifies and rewrites 61 literal instructions and seven complete
+method bodies. It covers 36 account-type callsites; explicit GetToken, connection
+supervisor and IID destinations; account providers and gservices URIs; and the
+host-owned SEND/READ_GSERVICES permissions. It does not globally rename a GMS
+namespace or replace the real caller's package identity. Every touched literal
+has an exact method signature and expected count. Postconditions fail the build
+if a required old route remains or an original Binder descriptor changes.
+
+`qiz.a(Context)` and each of `qib.a()`, `asiy.a()`, `ashh.a()` return the embedded
+backend's version through `YouTubeGmsBridge.backendVersion`, rather than reading
+YouTube's unrelated version code. `qiz.c(Context)` and `qmq.e(Context,String)` use
+the isolated backend context/resources. `GmsCoreSupport.checkGmsCore(Activity)`
+calls the embedded health check. Those helpers are implemented separately and
+must be supplied by the experimental host DEX.
+
+The paired manifest sets the native Firebase option
+`firebase_messaging_notification_delegation_enabled=false`. In this base,
+`asmq.C(Context)` reads that exact application metadata key and schedules
+`bjoq.run()` with the selected boolean. It returns early when the
+`com.google.firebase.messaging` preference `proxy_notification_initialized` is
+already true. Therefore upgrades additionally clear the Android notification
+delegate only if it equals `app.revanced.android.gms`. Normal app notification
+delivery and `asmq.D`'s real caller-UID check remain in place. Delegation is not
+redirected to the same host package.
+
+The patch emits a residual route inventory to `build/embedded-gms/client-routing.txt`
+(or the `calma.embeddedGms.report` property). Residual references include optional
+phenotype, Chimera/Dynamite, font, advertising-ID, Google Help/family/wallet paths,
+package-signature classifications, installation-recovery UI and intentional
+vendor identity. In particular, `wor.b()` validates an external phenotype provider
+and system-app flags; that optional provider remains unsupported. No eligibility
+check is forced true to hide that missing implementation.
+
+The strict patch was applied to the pinned APK, and a separate run without the
+property produced an APK with the original account/package literals, original
+Binder descriptors and no embedded host runtime classes. These are bytecode and
+build checks. They do not establish sign-in, subscriptions, playback or push
+notification delivery on a real signed-in account.
