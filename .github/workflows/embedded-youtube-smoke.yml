@@ -5,10 +5,58 @@ on:
     branches: ['codex/embedded-gms-prototype']
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: embedded-youtube-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  previous_candidate_diagnostic:
+    # Temporary credential-free diagnosis of the exact candidate that stalled.
+    # Run while the new instrumented candidate builds; never publish this APK.
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: embedded-youtube-candidate
+          run-id: 38257478385
+          github-token: ${{ github.token }}
+          path: build/previous-embedded-candidate
+      - run: sudo chmod 666 /dev/kvm
+      - name: Capture structural Android 15 stall diagnostics
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          output = Path('build/previous-embedded-candidate')
+          report = json.loads((output / 'build-report.json').read_text())
+          expected = 'd7ba2a92d76de3faea867013dd36d98e55e3a35dfac0b3ef28519d145242d60b'
+          apk = output / report['apk']
+          with apk.open('rb') as stream:
+              actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+          if actual != expected or actual != report['apkSha256'] or not report['debugSigning']:
+              raise RuntimeError('Previous diagnostic candidate identity mismatch')
+          evidence = output / 'evidence'
+          evidence.mkdir()
+          (evidence / 'provenance.json').write_text(json.dumps({
+              'candidateRun': 38257478385,
+              'candidateCommit': '5a9d047eb5ab3cc53fd83fea36cf096051a8404f',
+              'candidateSha256': actual,
+              'runnerCommit': os.environ['GITHUB_SHA'],
+          }, indent=2) + '\n')
+          subprocess.run(['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
+                          '--api', '35', '--apk', str(apk), '--output-dir', str(evidence),
+                          '--diagnostic-stacks'], check=True)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: embedded-youtube-previous-api35-diagnostic
+          path: build/previous-embedded-candidate/evidence/
+          retention-days: 7
   candidate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -111,7 +159,7 @@ jobs:
                   raise RuntimeError('Candidate differs from its immutable build report')
           command = ['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
                      '--api', '${{ matrix.api }}', '--apk', str(apk),
-                     '--output-dir', str(output / 'evidence')]
+                     '--output-dir', str(output / 'evidence'), '--diagnostic-stacks']
           if '${{ matrix.api }}' == '34':
               command.append('--disable-official-gms')
           subprocess.run(command, check=True)

@@ -43,12 +43,22 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         this.arguments = arguments == null ? new Bundle() : arguments;
+        phase("on_create");
         start();
+    }
+
+    private void phase(String name) {
+        Bundle progress = new Bundle();
+        progress.putString("youtubeEmbeddedPhase", name);
+        sendStatus(0, progress);
     }
 
     private void require(String name, boolean condition) throws Exception {
         JSONObject check = new JSONObject();
         check.put("name", name); check.put("passed", condition); checks.put(check);
+        Bundle progress = new Bundle();
+        progress.putString("youtubeEmbeddedProgress", checks.toString());
+        sendStatus(0, progress);
         if (!condition) throw new IllegalStateException(name);
     }
 
@@ -135,6 +145,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
     }
 
     @Override public void onStart() {
+        phase("on_start");
         JSONObject report = new JSONObject();
         Bundle result = new Bundle();
         boolean passed = false;
@@ -150,6 +161,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
             require("external ReVanced microG absent", !installed(context, "app.revanced.android.gms"));
             require("external Vanced microG absent", !installed(context, "com.mgoogle.android.gms"));
             require("test account store is empty", AccountManager.get(context).getAccountsByType(ACCOUNT).length == 0);
+            phase("prepare_backend_context");
             Context backend = YouTubeGmsBridge.backendContext(context);
             require("wrapped context keeps real installed identity", backend.getPackageName().equals(HOST)
                     && backend.getApplicationInfo().uid == Process.myUid());
@@ -159,6 +171,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                     .getIdentifier("gms_app_name", "string", HOST) != 0);
             require("main Application remains unchanged after module preparation", context.getApplicationContext()
                     .getClass().getName().equals("com.google.android.apps.youtube.app.YouTubeTikTokRoot_Application"));
+            phase("parcelable_recreation");
             parcelableIsolation(context, backend);
             if (Build.VERSION.SDK_INT >= 34) {
                 String originalNamespace = context.getSystemService(JobScheduler.class).getNamespace();
@@ -200,6 +213,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                 @Override public void onServiceDisconnected(ComponentName name) { connected.countDown(); }
                 @Override public void onNullBinding(ComponentName name) { connected.countDown(); }
             };
+            phase("bind_token_service");
             boolean bound = context.bindService(new Intent("com.google.android.gms.auth.GetToken")
                     .setComponent(new ComponentName(HOST, "com.google.android.gms.auth.GetToken")),
                     connection, Context.BIND_AUTO_CREATE);
@@ -208,7 +222,9 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                         && binder.get() != null && binder.get().isBinderAlive());
                 require("token Binder exposes upstream protocol", "com.google.android.auth.IAuthManagerService"
                         .equals(binder.get().getInterfaceDescriptor()));
+                phase("manifest_receiver_round_trip");
                 manifestReceiverRoundTrip(context, backend, binder.get());
+                phase("provider_checks");
                 for (String authority : new String[]{HOST + ".inhouse.gms.gservices", HOST + ".inhouse.gms.auth.accounts"}) {
                     ProviderInfo provider = context.getPackageManager().resolveContentProvider(authority, 0);
                     require("private owned provider: " + authority, provider != null
@@ -236,6 +252,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                 }
             } finally { if (bound) context.unbindService(connection); }
             if ("true".equals(arguments.getString("openLogin"))) {
+                phase("main_webview");
                 AtomicReference<Throwable> webViewFailure = new AtomicReference<>();
                 runOnMainSync(() -> {
                     try {
@@ -253,6 +270,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                 // Exercise Android's real account-add contract. Passing no Activity
                 // asks AccountManager to return the authenticator's intended UI; it
                 // does not add an account or supply any credentials on its own.
+                phase("account_manager_add");
                 AccountManagerFuture<Bundle> addAccount = AccountManager.get(context).addAccount(
                         ACCOUNT, null, null, new Bundle(), null, null, null);
                 Bundle accountEntry = addAccount.getResult(30, TimeUnit.SECONDS);
@@ -264,9 +282,11 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                 require("account-add intent carries Android authenticator response", authenticatorResponse
                         instanceof AccountAuthenticatorResponse);
                 report.put("accountManagerAddAccountEntryExercised", true);
+                phase("launch_login");
                 context.startActivity(login.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 require("real account-add login activity launch requested", true);
             }
+            phase("completed");
             passed = true;
         } catch (Throwable error) {
             // Exception class only: upstream messages may carry account or request data.

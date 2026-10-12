@@ -90,12 +90,34 @@ def structural_log(raw: str) -> str:
     return '\n'.join(result) + '\n'
 
 
+def structural_anr(raw: str) -> str:
+    """Keep Java call stacks and fixed thread roles, never ANR subjects or messages."""
+    frames = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('"main"'):
+            frames.append('[main thread]')
+        elif stripped.startswith('"Instr:'):
+            frames.append('[instrumentation thread]')
+        elif re.match(r'^".*" (?:daemon )?prio=\d+ tid=\d+', stripped):
+            frames.append('[other thread]')
+        elif re.fullmatch(r'at [A-Za-z0-9_.$<>]+\([A-Za-z0-9_.$ :\-]+\)', stripped):
+            frames.append(stripped)
+        elif re.fullmatch(r'- (?:waiting to lock|locked|waiting on|waiting to re-lock in wait\(\)) <0x[0-9a-f]+> \(a [A-Za-z0-9_.$<>]+\)(?: held by thread \d+)?', stripped):
+            frames.append(re.sub(r'<0x[0-9a-f]+>', '<object>', stripped))
+        if len(frames) >= 600:
+            break
+    return '\n'.join(frames) + '\n'
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--api', type=int, choices=(34, 35, 36), required=True)
     parser.add_argument('--apk', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'build/youtube-embedded-smoke/evidence')
     parser.add_argument('--existing-emulator', action='store_true', help='Use an already running disposable emulator-5554')
+    parser.add_argument('--diagnostic-stacks', action='store_true',
+                        help='After failure only, use disposable emulator adb root to collect sanitized Java stacks')
     parser.add_argument('--disable-official-gms', action='store_true',
                         help='Disable system Google Play Services on this disposable emulator to expose missed routing')
     parser.add_argument('--components-only', action='store_true', help='Stop before opening the sign-in entry UI')
@@ -224,6 +246,14 @@ def main() -> None:
             while time.monotonic() < deadline:
                 instrumentation_output.seek(0)
                 raw = instrumentation_output.read()
+                phases = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedPhase=([a-z_]+)$', raw, re.MULTILINE)
+                if phases:
+                    report['instrumentationPhases'] = phases
+                progress = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedProgress=(\[[^\r\n]+\])$', raw, re.MULTILINE)
+                if progress:
+                    report['incompleteComponentChecks'] = json.loads(progress[-1])
+                report['instrumentationProcessCrashed'] = 'shortMsg=Process crashed.' in raw
+                report['instrumentationFinalCodeSeen'] = bool(re.search(r'^INSTRUMENTATION_CODE:', raw, re.MULTILINE))
                 match = re.search(r'INSTRUMENTATION_(?:STATUS|RESULT): youtubeEmbeddedReport=(\{[^\r\n]+\})', raw)
                 if match:
                     component = json.loads(match[1])
@@ -290,6 +320,21 @@ def main() -> None:
     finally:
         try:
             (output / 'structural-log.txt').write_text(structural_log(adb('logcat', '-b', 'all', '-d').stdout))
+            if not report.get('passed'):
+                (output / 'anr-frames.txt').write_text(structural_anr(
+                    adb('shell', 'dumpsys', 'activity', 'lastanr-traces', timeout=20).stdout))
+                if args.diagnostic_stacks:
+                    # Diagnostic shell privilege begins only after the test failed.
+                    # The candidate's UID/permissions are never changed. Do not save
+                    # raw debuggerd output, which includes arbitrary thread names.
+                    adb('root', timeout=20)
+                    adb('wait-for-device', timeout=20)
+                    for label, process in (('main', PACKAGE), ('backend', PACKAGE + ':inhouse_gms')):
+                        process_ids = adb('shell', 'pidof', process).stdout.strip().split()
+                        if len(process_ids) == 1 and process_ids[0].isdigit():
+                            traces = adb('shell', 'debuggerd', '-j', process_ids[0], timeout=30)
+                            (output / (label + '-java-frames.txt')).write_text(structural_anr(traces.stdout))
+                    report['postFailureDiagnosticShellRootRequested'] = True
             adb('shell', 'rm', '-f', '/sdcard/inhouse-smoke-ui.xml')
             adb('shell', 'am', 'force-stop', PACKAGE)
         except Exception:
