@@ -253,6 +253,8 @@ def main() -> None:
         parser.error('--prepared-backend and --backend-report must be used together')
     if args.debug_signing and not args.instrumentation:
         parser.error('--debug-signing requires --instrumentation; it cannot produce an installable release update')
+    if json.loads((ROOT / 'app/assets/updates/config.json').read_text())['installedVersion'] != release_version()[0]:
+        raise RuntimeError('Updater installedVersion must match CalmaBuild.VERSION before building')
     output = args.output_dir
     required_root = (ROOT / 'build/embedded-youtube').resolve()
     if output != required_root and required_root not in output.parents:

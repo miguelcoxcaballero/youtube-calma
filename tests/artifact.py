@@ -21,6 +21,7 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
     assert 'Les/calma/youtube/nativeapp/CalmaBootstrap;' in classes
     assert b'CalmaBuild' in strings and m['version'].encode() in strings
     for n in ['updater.js','index.html','updater.css','host.js','host.css','config.json']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
+    assert json.loads(z.read('assets/updates/config.json'))['installedVersion']==m['version'],'Updater displays a stale installed version'
     assert z.read('assets/calma-preferences.json')==(R/'resources/assets/calma-preferences.json').read_bytes()
     supplied=json.loads((R/'settings.json').read_text());supplied.update(json.loads((R/'navigation-settings.json').read_text()));preset=json.loads(z.read('assets/calma-preferences.json'))
     for k,v in supplied.items():
