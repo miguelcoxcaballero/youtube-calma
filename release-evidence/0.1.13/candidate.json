@@ -1,0 +1,12 @@
+{
+  "version": "0.1.13",
+  "versionCode": 1557278158,
+  "required": true,
+  "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.13/YouTube-Calma-0.1.13.apk",
+  "apkSha256": "1b7691867d3c9147eacd282f13f37b6a95d4076d104e4c7e42a7007d866f18bd",
+  "apkSizeBytes": 285771506,
+  "releaseNotes": "Experimental built-in microG. Android 14+.",
+  "signerSha256": "7133a4b3e4b9f9c4d2fbbd38b7dd2d44c7b8d0d7d16568bfe3da74a09e7887b6",
+  "experimental": true,
+  "minimumAndroidApi": 34
+}

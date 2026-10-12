@@ -100,5 +100,41 @@ class CredentialPageTest(unittest.TestCase):
         self.assertTrue(SMOKE.credential_page_visible(classify(root)))
 
 
+class SignedUpgradeIdentityTest(unittest.TestCase):
+    def test_parses_android_package_metadata_without_retaining_unrelated_text(self):
+        for uid_label in ('userId', 'appId'):
+            with self.subTest(uid_label=uid_label):
+                result = SMOKE.installed_identity('''Packages:
+  Package [app.revanced.android.youtube]:
+    %s=10123
+    versionCode=1557278158 minSdk=34 targetSdk=35
+    arbitraryDiagnostic=not retained
+    User 0:
+      firstInstallTime=2026-10-12 21:30:00
+''' % uid_label)
+                self.assertEqual(result, {'versionCode': 1557278158, 'uid': 10123,
+                                          'firstInstallTime': '2026-10-12 21:30:00'})
+
+    def test_missing_identity_fails_closed(self):
+        with self.assertRaises(RuntimeError):
+            SMOKE.installed_identity('versionCode=1557278158 minSdk=34\nuserId=10123\n')
+
+    def test_strictly_newer_replacement_preserves_identity(self):
+        baseline = {'versionCode': 10, 'uid': 10123, 'firstInstallTime': '2026-10-12 21:30:00'}
+        SMOKE.verify_upgrade_identity(baseline, {**baseline, 'versionCode': 11})
+
+    def test_reinstall_same_code_and_downgrade_fail(self):
+        baseline = {'versionCode': 10, 'uid': 10123, 'firstInstallTime': '2026-10-12 21:30:00'}
+        for code in (9, 10):
+            with self.subTest(versionCode=code), self.assertRaises(RuntimeError):
+                SMOKE.verify_upgrade_identity(baseline, {**baseline, 'versionCode': code})
+
+    def test_fresh_install_is_not_mistaken_for_upgrade(self):
+        baseline = {'versionCode': 10, 'uid': 10123, 'firstInstallTime': '2026-10-12 21:30:00'}
+        for change in ({'uid': 10124}, {'firstInstallTime': '2026-10-12 21:31:00'}):
+            with self.subTest(change=change), self.assertRaises(RuntimeError):
+                SMOKE.verify_upgrade_identity(baseline, {**baseline, 'versionCode': 11, **change})
+
+
 if __name__ == '__main__':
     unittest.main()

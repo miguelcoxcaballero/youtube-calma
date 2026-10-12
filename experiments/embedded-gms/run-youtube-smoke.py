@@ -24,6 +24,24 @@ INSTRUMENTATION = PACKAGE + '/inhouse.microg.host.YouTubeSmokeInstrumentation'
 FORBIDDEN = {'app.revanced.android.gms', 'com.mgoogle.android.gms'}
 
 
+def installed_identity(package_dump: str) -> dict:
+    """Extract fixed installation metadata, never package/account diagnostic text."""
+    code = re.search(r'^\s*versionCode=(\d+)\b', package_dump, re.MULTILINE)
+    uid = re.search(r'^\s*(?:userId|appId)=(\d+)\b', package_dump, re.MULTILINE)
+    first = re.search(r'^\s*firstInstallTime=(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*$',
+                      package_dump, re.MULTILINE)
+    if code is None or uid is None or first is None:
+        raise RuntimeError('Cannot establish installed package version, UID and first install time')
+    return {'versionCode': int(code[1]), 'uid': int(uid[1]), 'firstInstallTime': first[1]}
+
+
+def verify_upgrade_identity(baseline: dict, candidate: dict) -> None:
+    if candidate['versionCode'] <= baseline['versionCode']:
+        raise RuntimeError('Candidate Android versionCode is not strictly newer than baseline')
+    if candidate['uid'] != baseline['uid'] or candidate['firstInstallTime'] != baseline['firstInstallTime']:
+        raise RuntimeError('Upgrade did not preserve the original installed package identity')
+
+
 def login_ui_structure(nodes) -> dict:
     """Classify a fresh login UI without retaining remote or user-entered text."""
     texts = {re.sub(r'\s+', ' ', (node.get(attribute) or '').casefold()).strip() for node in nodes
@@ -162,7 +180,20 @@ def main() -> None:
     parser.add_argument('--disable-official-gms', action='store_true',
                         help='Disable system Google Play Services on this disposable emulator to expose missed routing')
     parser.add_argument('--components-only', action='store_true', help='Stop before opening the sign-in entry UI')
+    parser.add_argument('--main-only', action='store_true',
+                        help='Check normal launch of a signed APK without test instrumentation')
+    parser.add_argument('--upgrade-from', type=Path,
+                        help='Install this pinned baseline first, then replace it with the candidate using -r')
+    parser.add_argument('--upgrade-sha256', help='Required exact SHA-256 of --upgrade-from')
+    parser.add_argument('--expected-version-code', type=int,
+                        help='Require this actual Android versionCode after candidate installation')
     args = parser.parse_args()
+    if bool(args.upgrade_from) != bool(args.upgrade_sha256):
+        parser.error('--upgrade-from and --upgrade-sha256 must be supplied together')
+    if args.upgrade_sha256 and not re.fullmatch(r'[0-9a-fA-F]{64}', args.upgrade_sha256):
+        parser.error('--upgrade-sha256 must contain exactly 64 hexadecimal characters')
+    if args.main_only and args.components_only:
+        parser.error('--main-only and --components-only describe different test scopes')
     output = args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
     sdk = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ['ANDROID_HOME'])
@@ -175,6 +206,9 @@ def main() -> None:
         'accountsOrCredentialsSupplied': False, 'googleCredentialEntryVisible': False,
         'scope': 'actual YouTube APK, embedded component bootstrap, credential-free sign-in entry',
     }
+    if args.main_only:
+        report['scope'] = 'signed YouTube APK installation and native main-process launch only'
+        report['instrumentationTested'] = False
 
     def run(*command, timeout=60, **kwargs):
         return subprocess.run(list(map(str, command)), capture_output=True, text=True, timeout=timeout, **kwargs)
@@ -206,6 +240,12 @@ def main() -> None:
     try:
         with args.apk.open('rb') as stream:
             report['apkSha256'] = hashlib.file_digest(stream, 'sha256').hexdigest()
+        if args.upgrade_from:
+            with args.upgrade_from.open('rb') as stream:
+                baseline_hash = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if baseline_hash != args.upgrade_sha256.lower():
+                raise RuntimeError('Baseline APK does not match its pinned SHA-256')
+            report['upgrade'] = {'baselineSha256': baseline_hash}
         if not args.existing_emulator:
             image = f'system-images;android-{args.api};google_apis;x86_64'
             require(run(sdk / 'cmdline-tools/latest/bin/sdkmanager', '--licenses', input='y\n' * 100,
@@ -249,11 +289,34 @@ def main() -> None:
             if 'com.google.android.gms' not in disabled:
                 raise RuntimeError('System Google Play Services remained enabled')
             report['officialGooglePlayServicesDisabled'] = True
-        require(adb('install', '--no-incremental', args.apk, timeout=240), 'Candidate APK installation failed')
+        baseline_identity = None
+        if args.upgrade_from:
+            require(adb('install', '--no-incremental', args.upgrade_from, timeout=240),
+                    'Pinned baseline APK installation failed')
+            if package_set() - before != {PACKAGE}:
+                raise RuntimeError('Baseline installation changed unexpected packages')
+            baseline_identity = installed_identity(require(adb('shell', 'dumpsys', 'package', PACKAGE),
+                                                            'Baseline package inspection failed'))
+            report['upgrade']['baseline'] = baseline_identity
+        install_args = ['install', '--no-incremental']
+        if args.upgrade_from:
+            install_args.append('-r')
+        require(adb(*install_args, args.apk, timeout=240), 'Candidate APK installation failed')
+        candidate_identity = installed_identity(require(adb('shell', 'dumpsys', 'package', PACKAGE),
+                                                         'Candidate package inspection failed'))
+        report['installedCandidate'] = candidate_identity
+        if args.expected_version_code is not None and candidate_identity['versionCode'] != args.expected_version_code:
+            raise RuntimeError('Installed Android versionCode differs from the expected candidate')
+        if baseline_identity is not None:
+            verify_upgrade_identity(baseline_identity, candidate_identity)
+            report['upgrade'].update({'candidate': candidate_identity, 'strictlyNewer': True,
+                                      'uidPreserved': True, 'firstInstallTimePreserved': True,
+                                      'replacedExistingInstall': True})
         after = package_set()
         if after - before != {PACKAGE} or after & FORBIDDEN:
             raise RuntimeError('Candidate installation changed unexpected packages')
-        report['onlyCandidateApkInstalled'] = True
+        report['onlyCandidateApkInstalled'] = not bool(args.upgrade_from)
+        report['onlyYouTubePackageInstalled'] = True
         adb('shell', 'input', 'keyevent', 'KEYCODE_WAKEUP')
         adb('shell', 'wm', 'dismiss-keyguard')
         adb('shell', 'appops', 'set', PACKAGE, 'POST_NOTIFICATION', 'allow')
@@ -272,80 +335,81 @@ def main() -> None:
         report['mainProcessStayedAliveAfterLaunch'] = True
         if re.search(r'Process: ' + re.escape(PACKAGE) + r'[:,\s]|ANR in ' + re.escape(PACKAGE), main_logs):
             raise RuntimeError('YouTube or embedded backend crashed during normal main launch')
-        adb('logcat', '-b', 'all', '-c')
-        # Instrumentation validates the actual Application instance, real provider
-        # calls, account registration and token Binder. It belongs to this APK and
-        # adds no second installed package. Its output contains fixed structural data.
-        with tempfile.TemporaryFile(mode='w+t') as instrumentation_output:
-            # Raw mode preserves every Bundle key even when Android's special
-            # "stream" result is present; pretty mode suppresses the JSON report.
-            command = [str(adb_binary), '-s', 'emulator-5554', 'shell', 'am', 'instrument', '-w', '-r']
-            if not args.components_only:
-                command += ['-e', 'openLogin', 'true']
-            command += [INSTRUMENTATION]
-            instrument = subprocess.Popen(command, stdout=instrumentation_output, stderr=subprocess.STDOUT)
-            deadline = time.monotonic() + 90
-            component = None
-            while time.monotonic() < deadline:
-                instrumentation_output.seek(0)
-                raw = instrumentation_output.read()
-                phases = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedPhase=([a-z_]+)$', raw, re.MULTILINE)
-                if phases:
-                    report['instrumentationPhases'] = phases
-                progress = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedProgress=(\[[^\r\n]+\])$', raw, re.MULTILINE)
-                if progress:
-                    report['incompleteComponentChecks'] = json.loads(progress[-1])
-                report['instrumentationProcessCrashed'] = 'shortMsg=Process crashed.' in raw
-                report['instrumentationFinalCodeSeen'] = bool(re.search(r'^INSTRUMENTATION_CODE:', raw, re.MULTILINE))
-                match = re.search(r'INSTRUMENTATION_(?:STATUS|RESULT): youtubeEmbeddedReport=(\{[^\r\n]+\})', raw)
-                if match:
-                    component = json.loads(match[1])
-                    break
-                if instrument.poll() is not None:
-                    break
-                time.sleep(1)
-            if component is None:
-                raise RuntimeError('No structural report from experimental YouTube instrumentation')
-            report['components'] = component
-            if not component.get('passed'):
-                raise RuntimeError('Actual YouTube embedded component checks failed')
-            if not args.components_only:
-                report['signInActivityLaunchRequested'] = True
-                deadline = time.monotonic() + 30
-                button = None
+        if not args.main_only:
+            adb('logcat', '-b', 'all', '-c')
+            # Instrumentation validates the actual Application instance, real provider
+            # calls, account registration and token Binder. It belongs to this APK and
+            # adds no second installed package. Its output contains fixed structural data.
+            with tempfile.TemporaryFile(mode='w+t') as instrumentation_output:
+                # Raw mode preserves every Bundle key even when Android's special
+                # "stream" result is present; pretty mode suppresses the JSON report.
+                command = [str(adb_binary), '-s', 'emulator-5554', 'shell', 'am', 'instrument', '-w', '-r']
+                if not args.components_only:
+                    command += ['-e', 'openLogin', 'true']
+                command += [INSTRUMENTATION]
+                instrument = subprocess.Popen(command, stdout=instrumentation_output, stderr=subprocess.STDOUT)
+                deadline = time.monotonic() + 90
+                component = None
                 while time.monotonic() < deadline:
-                    button = next((node for node in nodes() if any((node.get(attribute) or '').casefold().strip() == 'sign in'
-                                   for attribute in ('text', 'content-desc', 'hint'))
-                                   and 'Button' in node.get('class', '')), None)
-                    if button is not None:
+                    instrumentation_output.seek(0)
+                    raw = instrumentation_output.read()
+                    phases = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedPhase=([a-z_]+)$', raw, re.MULTILINE)
+                    if phases:
+                        report['instrumentationPhases'] = phases
+                    progress = re.findall(r'^INSTRUMENTATION_STATUS: youtubeEmbeddedProgress=(\[[^\r\n]+\])$', raw, re.MULTILINE)
+                    if progress:
+                        report['incompleteComponentChecks'] = json.loads(progress[-1])
+                    report['instrumentationProcessCrashed'] = 'shortMsg=Process crashed.' in raw
+                    report['instrumentationFinalCodeSeen'] = bool(re.search(r'^INSTRUMENTATION_CODE:', raw, re.MULTILINE))
+                    match = re.search(r'INSTRUMENTATION_(?:STATUS|RESULT): youtubeEmbeddedReport=(\{[^\r\n]+\})', raw)
+                    if match:
+                        component = json.loads(match[1])
+                        break
+                    if instrument.poll() is not None:
                         break
                     time.sleep(1)
-                if button is None:
-                    raise RuntimeError('Embedded sign-in intro did not render')
-                report['embeddedSignInIntroVisible'] = True
-                bounds = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', button.get('bounds', ''))
-                if bounds is None:
-                    raise RuntimeError('Embedded Sign in button has invalid bounds')
-                left, top, right, bottom = map(int, bounds.groups())
-                require(adb('shell', 'input', 'tap', (left + right) // 2, (top + bottom) // 2),
-                        'Cannot activate sign-in entry')
-                deadline = time.monotonic() + 90
-                while time.monotonic() < deadline:
-                    current = nodes()
-                    structure = login_ui_structure(current)
-                    report['loginUiStructure'] = structure
-                    if credential_page_visible(structure):
-                        report['googleCredentialEntryVisible'] = True
-                        break
-                    if structure['networkErrorVisible']:
-                        report['networkErrorVisible'] = True
-                        break
-                    if not adb('shell', 'pidof', PACKAGE + ':inhouse_gms').stdout.strip():
-                        report['backendExited'] = True
-                        break
-                    time.sleep(2)
-                if not report['googleCredentialEntryVisible']:
-                    raise RuntimeError('Google credential entry did not appear; authenticated operation remains untested')
+                if component is None:
+                    raise RuntimeError('No structural report from experimental YouTube instrumentation')
+                report['components'] = component
+                if not component.get('passed'):
+                    raise RuntimeError('Actual YouTube embedded component checks failed')
+                if not args.components_only:
+                    report['signInActivityLaunchRequested'] = True
+                    deadline = time.monotonic() + 30
+                    button = None
+                    while time.monotonic() < deadline:
+                        button = next((node for node in nodes() if any((node.get(attribute) or '').casefold().strip() == 'sign in'
+                                       for attribute in ('text', 'content-desc', 'hint'))
+                                       and 'Button' in node.get('class', '')), None)
+                        if button is not None:
+                            break
+                        time.sleep(1)
+                    if button is None:
+                        raise RuntimeError('Embedded sign-in intro did not render')
+                    report['embeddedSignInIntroVisible'] = True
+                    bounds = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', button.get('bounds', ''))
+                    if bounds is None:
+                        raise RuntimeError('Embedded Sign in button has invalid bounds')
+                    left, top, right, bottom = map(int, bounds.groups())
+                    require(adb('shell', 'input', 'tap', (left + right) // 2, (top + bottom) // 2),
+                            'Cannot activate sign-in entry')
+                    deadline = time.monotonic() + 90
+                    while time.monotonic() < deadline:
+                        current = nodes()
+                        structure = login_ui_structure(current)
+                        report['loginUiStructure'] = structure
+                        if credential_page_visible(structure):
+                            report['googleCredentialEntryVisible'] = True
+                            break
+                        if structure['networkErrorVisible']:
+                            report['networkErrorVisible'] = True
+                            break
+                        if not adb('shell', 'pidof', PACKAGE + ':inhouse_gms').stdout.strip():
+                            report['backendExited'] = True
+                            break
+                        time.sleep(2)
+                    if not report['googleCredentialEntryVisible']:
+                        raise RuntimeError('Google credential entry did not appear; authenticated operation remains untested')
         final = package_set()
         if final - before != {PACKAGE} or final & FORBIDDEN:
             raise RuntimeError('An unexpected external package appeared during the smoke test')

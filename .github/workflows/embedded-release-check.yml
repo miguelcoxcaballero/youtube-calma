@@ -1,0 +1,74 @@
+name: Signed embedded YouTube upgrade
+on:
+  push:
+    branches: ['embedded-release-check-*']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 35, 36]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: sudo chmod 666 /dev/kvm
+      - name: Fetch the exact signed candidate from its draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p build/signed-upgrade
+          gh release download v0.1.13 --repo '${{ github.repository }}' --pattern YouTube-Calma-0.1.13.apk --dir build/signed-upgrade
+          python3 - <<'PY'
+          import hashlib, json, shutil, urllib.request
+          from pathlib import Path
+          root = Path('build/signed-upgrade')
+          candidate = root / 'YouTube-Calma-0.1.13.apk'
+          manifest = json.loads(Path('release-evidence/0.1.13/candidate.json').read_text())
+          with candidate.open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == manifest['apkSha256']
+          assert candidate.stat().st_size == manifest['apkSizeBytes']
+          with urllib.request.urlopen('https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.5/YouTube-Calma-0.1.5.apk', timeout=120) as response, (root / 'baseline-0.1.5.apk').open('wb') as output:
+              shutil.copyfileobj(response, output)
+          with (root / 'baseline-0.1.5.apk').open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == '2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704'
+          PY
+      - name: Verify permanent signer and release identity
+        run: |
+          "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0'
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from release_metadata import verify_apk, release_version
+          tools = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ['ANDROID_HOME']) / 'build-tools/36.0.0'
+          root = Path('build/signed-upgrade')
+          manifest = json.loads(Path('release-evidence/0.1.13/candidate.json').read_text())
+          for name in ('baseline-0.1.5.apk', 'YouTube-Calma-0.1.13.apk'):
+              output = subprocess.check_output([str(tools / 'apksigner'), 'verify', '--print-certs', str(root / name)], text=True)
+              assert re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-f]+)', output) == [manifest['signerSha256']]
+          version, code = release_version()
+          assert version == manifest['version'] and code == manifest['versionCode']
+          verify_apk(root / 'YouTube-Calma-0.1.13.apk', tools, version, code)
+          PY
+      - name: Upgrade the real signed 0.1.5 without external microG
+        run: |
+          extra=()
+          if [ '${{ matrix.api }}' = 34 ]; then extra+=(--disable-official-gms); fi
+          python3 experiments/embedded-gms/run-youtube-smoke.py \
+            --api '${{ matrix.api }}' --main-only \
+            --apk build/signed-upgrade/YouTube-Calma-0.1.13.apk \
+            --upgrade-from build/signed-upgrade/baseline-0.1.5.apk \
+            --upgrade-sha256 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704 \
+            --expected-version-code 1557278158 \
+            --output-dir build/signed-upgrade/evidence --diagnostic-stacks "${extra[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: signed-embedded-upgrade-${{ matrix.api }}
+          path: build/signed-upgrade/evidence/
+          retention-days: 7
