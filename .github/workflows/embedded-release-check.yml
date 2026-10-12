@@ -17,12 +17,12 @@ jobs:
         with:
           persist-credentials: false
       - run: sudo chmod 666 /dev/kvm
-      - name: Fetch the exact signed candidate from its draft release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Reconstruct the exact signed candidate and fetch pinned baseline
         run: |
-          mkdir -p build/signed-upgrade
-          gh release download v0.1.13 --repo '${{ github.repository }}' --pattern YouTube-Calma-0.1.13.apk --dir build/signed-upgrade
+          python3 scripts/reconstruct-embedded-candidate.py \
+            --transport release-input/transport.json \
+            --candidate release-evidence/0.1.13/candidate.json \
+            --output-dir build/signed-upgrade
           python3 - <<'PY'
           import hashlib, json, shutil, urllib.request
           from pathlib import Path
@@ -72,3 +72,56 @@ jobs:
           name: signed-embedded-upgrade-${{ matrix.api }}
           path: build/signed-upgrade/evidence/
           retention-days: 7
+  upload_draft:
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Reconstruct verified APK and stage matching release files
+        run: |
+          python3 scripts/reconstruct-embedded-candidate.py \
+            --transport release-input/transport.json \
+            --candidate release-evidence/0.1.13/candidate.json \
+            --output-dir build/release-upload
+          python3 - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          output = Path('build/release-upload')
+          candidate = json.loads(Path('release-evidence/0.1.13/candidate.json').read_text())
+          manifest = json.loads(Path('android-update.json').read_text())
+          for key in ('version', 'versionCode', 'apkUrl', 'apkSha256', 'apkSizeBytes'):
+              if manifest[key] != candidate[key]:
+                  raise RuntimeError('Release update manifest differs from tested candidate: ' + key)
+          if 'signerSha256' in manifest and manifest['signerSha256'] != candidate['signerSha256']:
+              raise RuntimeError('Optional update-manifest signer differs from verified APK signer')
+          assert candidate['version'] == '0.1.13' and candidate['versionCode'] == 1557278158
+          filename = 'YouTube-Calma-0.1.13.apk'
+          (output / 'SHA256SUMS.txt').write_text(candidate['apkSha256'] + '  ' + filename + '\n')
+          shutil.copyfile('android-update.json', output / 'android-update.json')
+          build_info = Path('release-evidence/0.1.13/build-info.json')
+          if build_info.exists():
+              info = json.loads(build_info.read_text())
+              assert info['apkSha256'] == candidate['apkSha256'] and info['version'] == candidate['version']
+              shutil.copyfile(build_info, output / 'build-info.json')
+          PY
+      - name: Upload to the existing draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view v0.1.13 --json isDraft,tagName > build/release-upload/draft-state.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          draft = json.loads(Path('build/release-upload/draft-state.json').read_text())
+          if draft['isDraft'] is not True or draft['tagName'] != 'v0.1.13':
+              raise RuntimeError('Assets may only be added to the existing v0.1.13 draft')
+          PY
+          assets=(build/release-upload/YouTube-Calma-0.1.13.apk build/release-upload/SHA256SUMS.txt build/release-upload/android-update.json)
+          if [ -f build/release-upload/build-info.json ]; then assets+=(build/release-upload/build-info.json); fi
+          gh release upload v0.1.13 "${assets[@]}"
