@@ -1,6 +1,11 @@
 name: Embedded microG component probe
 on:
   workflow_dispatch:
+    inputs:
+      login_entry:
+        description: 'Also open the Google login landing page without entering credentials'
+        type: boolean
+        default: false
   push:
     branches: ['codex/embedded-gms-prototype']
 permissions:
@@ -13,6 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         api: [35, 36]
+    env:
+      # This experimental branch also exercises the credential-free login entry.
+      INHOUSE_LOGIN_ENTRY: ${{ github.event_name == 'push' || inputs.login_entry }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -22,9 +30,15 @@ jobs:
       - name: Prepare platform and build tools
         run: '"${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"'
       - name: Build isolated debug probe (no release key)
-        run: python3 experiments/embedded-gms/build-harness.py
+        run: |
+          args=()
+          if [ "$INHOUSE_LOGIN_ENTRY" = true ]; then args+=(--login-entry); fi
+          python3 experiments/embedded-gms/build-harness.py "${args[@]}"
       - name: Check embedded components without installed microG
-        run: python3 experiments/embedded-gms/run-harness.py --api '${{ matrix.api }}'
+        run: |
+          args=()
+          if [ "$INHOUSE_LOGIN_ENTRY" = true ]; then args+=(--login-entry); fi
+          python3 experiments/embedded-gms/run-harness.py --api '${{ matrix.api }}' "${args[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

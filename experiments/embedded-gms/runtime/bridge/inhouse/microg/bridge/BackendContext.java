@@ -9,12 +9,17 @@ import android.view.LayoutInflater;
 
 /** Keeps real installed package/UID while supplying the backend's code and resource table. */
 public final class BackendContext extends ContextWrapper {
+    private final Resources resources;
     private Resources.Theme theme;
     private LayoutInflater inflater;
 
-    BackendContext(Context base) { super(base); }
+    BackendContext(Context base) {
+        super(base);
+        resources = new BackendResources(BackendEnvironment.resources,
+                base.getResources().getConfiguration(), base.getPackageName());
+    }
 
-    @Override public Resources getResources() { return BackendEnvironment.resources; }
+    @Override public Resources getResources() { return resources; }
     @Override public AssetManager getAssets() { return getResources().getAssets(); }
     @Override public ClassLoader getClassLoader() { return BackendEnvironment.classLoader; }
 
@@ -33,9 +38,8 @@ public final class BackendContext extends ContextWrapper {
     }
 
     @Override public Context createConfigurationContext(Configuration configuration) {
-        // Full integration must build a configuration-specific backend Resources instance.
-        // This prototype keeps the backend table and copies the requested display/night mode.
-        getResources().updateConfiguration(configuration, getResources().getDisplayMetrics());
+        // Avoid directly updating the runtime Resources; the facade still shares AssetManager.
+        // Simultaneous windows with different configurations remain outside this probe scope.
         return new BackendContext(super.createConfigurationContext(configuration));
     }
 

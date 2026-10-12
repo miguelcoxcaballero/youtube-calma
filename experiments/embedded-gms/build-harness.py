@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import urllib.request
 import zipfile
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -59,6 +60,7 @@ def main() -> None:
     parser.add_argument('--android-jar', type=Path)
     parser.add_argument('--ecj', type=Path)
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'build/embedded-gms')
+    parser.add_argument('--login-entry', action='store_true', help='Add optional unauthenticated login entry components')
     args = parser.parse_args()
     output = args.output_dir.resolve(); output.mkdir(parents=True, exist_ok=True)
     sdk = os.environ.get('ANDROID_SDK_ROOT') or os.environ.get('ANDROID_HOME')
@@ -94,6 +96,7 @@ def main() -> None:
         'package es.inhouse.gmsprobe; final class ProbeBuild {\n'
         f' static final String GMS_SHA256 = "{GMS_SHA}";\n'
         f' static final String BRIDGE_SHA256 = "{digest(bridge)}";\n'
+        f' static final boolean LOGIN_ENTRY = {str(args.login_entry).lower()};\n'
         '}\n')
     host_classes = work / 'host-classes'; host_classes.mkdir()
     host_sources = sorted((HERE / 'harness/src').rglob('*.java')) + groups['host'] + list(generated.glob('*.java'))
@@ -112,7 +115,19 @@ def main() -> None:
     compiled_resources = work / 'resources.zip'
     run(build_tools / 'aapt2', 'compile', '--dir', HERE / 'harness/res', '-o', compiled_resources)
     unsigned = work / 'unsigned.apk'
-    run(build_tools / 'aapt2', 'link', '-I', android, '--manifest', HERE / 'harness/AndroidManifest.xml',
+    manifest = HERE / 'harness/AndroidManifest.xml'
+    if args.login_entry:
+        android_ns = 'http://schemas.android.com/apk/res/android'
+        ET.register_namespace('android', android_ns)
+        document = ET.parse(manifest); application = document.getroot().find('application')
+        def component(tag, **attributes):
+            return ET.SubElement(application, tag, {'{' + android_ns + '}' + key: value for key, value in attributes.items()})
+        component('activity', name='org.microg.gms.auth.login.LoginActivity', process=':microg', exported='true')
+        component('provider', name='org.microg.gms.settings.SettingsProvider',
+                  authorities='es.inhouse.gmsprobe.microg.settings', process=':microg', exported='false')
+        component('meta-data', name='org.microg.gms.settings.checkin_enable_service', value='true')
+        manifest = work / 'AndroidManifest.xml'; document.write(manifest, encoding='utf-8', xml_declaration=True)
+    run(build_tools / 'aapt2', 'link', '-I', android, '--manifest', manifest,
         '-o', unsigned, compiled_resources)
     with zipfile.ZipFile(unsigned, 'a', zipfile.ZIP_DEFLATED) as archive:
         archive.write(host_dex / 'classes.dex', 'classes.dex')
@@ -139,6 +154,7 @@ def main() -> None:
               'bridgeDexSha256': digest(bridge), 'package': 'es.inhouse.gmsprobe',
               'productionRelease': False, 'externalPackageInstallation': False,
               'googleLoginTested': False, 'youtubePlaybackTested': False, 'pushDeliveryTested': False,
+              'loginEntryComponentsIncluded': args.login_entry,
               'sourceHashes': {str(path.relative_to(runtime)): digest(path) for files in groups.values() for path in files}}
     (output / 'build-report.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))

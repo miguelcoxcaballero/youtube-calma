@@ -33,4 +33,10 @@ Before enabling the module in YouTube, test the signed candidate on recent Andro
 
 The existing `scripts/runtime-check.py` installs external microG. Its success cannot establish that YouTube works independently. The component experiment has a separate workflow and report; it must explicitly report authenticated testing as unperformed until real evidence exists.
 
+## Verified component result
+
+Commit `db5f29bd146c43b041f8eea316343ffefddfedcd` passed all 24 component checks on Android API 35 and 36 in [run 38248074063](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38248074063). Both devices had official Google Play Services, neither had external microG, and the probe was the only newly installed package. The tests covered isolated code/resources, the actual GServices provider, Android authenticator registration and a real Binder/Parcelable round trip. Credential-free reports are preserved in `evidence/components-api35.json` and `evidence/components-api36.json`.
+
+This proves the component architecture only. It does not change the release acceptance requirements above. The separate login-entry profile may open the upstream Google login page without entering any credentials; even a passing page test is not authenticated sign-in or YouTube playback.
+
 Any eventual automatic release goes to A. B still requires an explicit request, and A includes newer B releases as specified in the repository's `AGENTS.md`.

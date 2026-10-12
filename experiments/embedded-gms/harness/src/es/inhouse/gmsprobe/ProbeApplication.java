@@ -11,6 +11,23 @@ import java.security.MessageDigest;
 
 /** Same-APK runtime probe: no package installer and no external service package. */
 public final class ProbeApplication extends Application {
+    private EmbeddedRuntime backendRuntime() {
+        if (!ProbeBuild.LOGIN_ENTRY || !Application.getProcessName().endsWith(":microg")) return null;
+        try { return EmbeddedRuntime.current(); }
+        catch (IllegalStateException notInitialized) { return null; }
+    }
+    @Override public android.content.res.Resources getResources() {
+        EmbeddedRuntime runtime = backendRuntime();
+        return runtime == null ? super.getResources() : runtime.resources();
+    }
+    @Override public android.content.res.AssetManager getAssets() {
+        EmbeddedRuntime runtime = backendRuntime();
+        return runtime == null ? super.getAssets() : runtime.resources().getAssets();
+    }
+    @Override public ClassLoader getClassLoader() {
+        EmbeddedRuntime runtime = backendRuntime();
+        return runtime == null ? super.getClassLoader() : runtime.classLoader();
+    }
     @Override protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
         try {

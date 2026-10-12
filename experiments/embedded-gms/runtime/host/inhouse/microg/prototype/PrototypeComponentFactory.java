@@ -14,6 +14,9 @@ public final class PrototypeComponentFactory extends AppComponentFactory {
         if (name.equals("org.microg.gms.auth.loginservice.GoogleLoginService")) return "inhouse.microg.bridge.LoginServiceBridge";
         if (name.equals("com.google.android.gms.auth.GetToken")) return "inhouse.microg.bridge.GetTokenServiceBridge";
         if (name.equals("org.microg.gms.gservices.GServicesProvider")) return "inhouse.microg.bridge.GServicesProviderBridge";
+        // Final Kotlin provider: it only uses real host preferences/metadata and no
+        // backend resource IDs. Let Android attach its real host Context unchanged.
+        if (name.equals("org.microg.gms.settings.SettingsProvider")) return name;
         return name.startsWith("inhouse.microg.bridge.") ? name : null;
     }
 

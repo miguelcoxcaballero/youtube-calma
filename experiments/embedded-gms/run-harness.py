@@ -11,9 +11,28 @@ import re
 import subprocess
 import time
 import traceback
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = 'es.inhouse.gmsprobe'
+
+
+def structural_crash_log(raw: str) -> str:
+    """Retain stack structure only, never upstream request/response bodies or URLs."""
+    result = []
+    for line in raw.splitlines():
+        if 'AndroidRuntime' not in line: continue
+        message = line.split('AndroidRuntime', 1)[1].lstrip(' :')
+        if message.startswith('FATAL EXCEPTION:'):
+            result.append('FATAL EXCEPTION')
+        elif message.startswith('Process:') and PACKAGE in message:
+            result.append('Process: ' + (PACKAGE + ':microg' if PACKAGE + ':microg' in message else PACKAGE))
+        elif re.fullmatch(r'\s*at [A-Za-z0-9_.$<>]+\([A-Za-z0-9_.$ :\-]+\)', message):
+            result.append(message.strip())
+        else:
+            error = re.match(r'(?:Caused by: )?([A-Za-z0-9_.$]+(?:Exception|Error))(?::|$)', message)
+            if error: result.append(error[1] + ': [message omitted]')
+    return '\n'.join(result) + '\n'
 
 
 def main() -> None:
@@ -21,6 +40,7 @@ def main() -> None:
     parser.add_argument('--api', type=int, choices=(35, 36), required=True)
     parser.add_argument('--apk', type=Path, default=ROOT / 'build/embedded-gms/Embedded-Gms-Probe.apk')
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'build/embedded-gms/evidence')
+    parser.add_argument('--login-entry', action='store_true', help='Probe sign-in entry only; never enter credentials')
     args = parser.parse_args()
     output = args.output_dir.resolve(); output.mkdir(parents=True, exist_ok=True)
     sdk = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ['ANDROID_HOME'])
@@ -39,6 +59,61 @@ def main() -> None:
 
     def adb(*command, **kwargs):
         return run(adb_binary, '-s', 'emulator-5554', *command, **kwargs)
+
+    def ui_nodes():
+        # Accessibility XML is held only in memory. Do not upload raw dynamic text,
+        # page URLs, cookies, check-in IDs, or any other remote response content.
+        dumped = adb('shell', 'uiautomator', 'dump', '/sdcard/probe-ui.xml', timeout=25)
+        if dumped.returncode: return []
+        raw = adb('shell', 'cat', '/sdcard/probe-ui.xml').stdout
+        try: return list(ET.fromstring(raw).iter('node'))
+        except ET.ParseError: return []
+
+    def login_entry():
+        state = {'credentialsEntered': False, 'googleLoginTested': False,
+                 'introVisible': False, 'googleCredentialEntryVisible': False,
+                 'deviceCheckinMayContactGoogle': True}
+        report['loginEntry'] = state
+        adb('logcat', '-b', 'all', '-c')
+        launch = adb('shell', 'am', 'start', '-W', '-n', PACKAGE + '/org.microg.gms.auth.login.LoginActivity',
+                     '--es', 'tmpl', 'new_account')
+        if launch.returncode: raise RuntimeError('Embedded login entry activity failed to start')
+        deadline = time.monotonic() + 30; button = None
+        while time.monotonic() < deadline:
+            nodes = ui_nodes()
+            button = next((node for node in nodes if (node.get('text') or '').casefold() == 'sign in'
+                           and 'Button' in node.get('class', '')), None)
+            if button is not None: break
+            if not adb('shell', 'pidof', PACKAGE + ':microg').stdout.strip(): break
+            time.sleep(1)
+        if button is None: raise RuntimeError('Embedded login intro did not render a Sign in button')
+        state['introVisible'] = True
+        bounds = re.fullmatch(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', button.get('bounds', ''))
+        if not bounds: raise RuntimeError('Sign in button has invalid bounds')
+        left, top, right, bottom = map(int, bounds.groups())
+        tap = adb('shell', 'input', 'tap', str((left + right) // 2), str((top + bottom) // 2))
+        if tap.returncode: raise RuntimeError('Cannot activate sign-in entry button')
+        state['signInButtonActivated'] = True
+        deadline = time.monotonic() + 75
+        while time.monotonic() < deadline:
+            nodes = ui_nodes(); texts = [(node.get('text') or '').casefold() for node in nodes]
+            credential = any(text.strip() in {'email or phone', 'email address', 'enter your email', 'email'} for text in texts)
+            web = any(node.get('class') == 'android.webkit.WebView' for node in nodes)
+            if web and credential:
+                state['googleCredentialEntryVisible'] = True
+                break
+            if any('problem communicating with google servers' in text or 'check your network connection' in text for text in texts):
+                state['networkErrorVisible'] = True
+                break
+            if not adb('shell', 'pidof', PACKAGE + ':microg').stdout.strip():
+                state['backendExited'] = True
+                break
+            time.sleep(2)
+        # Stop before any account name/password entry. This checks a landing page,
+        # never authentication, token refresh, push, or YouTube account access.
+        adb('shell', 'am', 'force-stop', PACKAGE)
+        if not state['googleCredentialEntryVisible']:
+            raise RuntimeError('Google credential entry did not appear in the embedded login probe')
 
     try:
         with args.apk.open('rb') as stream: report['apkSha256'] = hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -87,7 +162,9 @@ def main() -> None:
         report['onlyProbeApkInstalled'] = True
         require(adb('shell', 'dumpsys', 'package', PACKAGE), 'package-components')
         require(adb('shell', 'dumpsys', 'account'), 'registered-authenticators')
-        logs = require(adb('logcat', '-b', 'all', '-d'), 'logcat')
+        if args.login_entry: login_entry()
+        logs = adb('logcat', '-b', 'all', '-d').stdout
+        (output / 'logcat.txt').write_text(structural_crash_log(logs) if args.login_entry else logs)
         if re.search(r'Process: ' + re.escape(PACKAGE) + r'[:,\s]|ANR in ' + re.escape(PACKAGE), logs):
             raise RuntimeError('Probe app or backend process crashed/ANR')
         report['passed'] = True
@@ -95,7 +172,9 @@ def main() -> None:
         report['passed'] = False; report['error'] = str(error)
         (output / 'error.txt').write_text(traceback.format_exc())
     finally:
-        try: (output / 'final-logcat.txt').write_text(adb('logcat', '-b', 'all', '-d').stdout)
+        try:
+            logs = adb('logcat', '-b', 'all', '-d').stdout
+            (output / 'final-logcat.txt').write_text(structural_crash_log(logs) if args.login_entry else logs)
         except Exception: pass
         if emulator is not None:
             emulator.terminate()

@@ -48,6 +48,8 @@ public final class EmbeddedRuntime {
         return value;
     }
 
+    public static EmbeddedRuntime currentOrNull() { return current; }
+
     public Resources resources() { return resources; }
     public ClassLoader classLoader() { return classLoader; }
 
@@ -57,7 +59,8 @@ public final class EmbeddedRuntime {
 
     public Object newComponent(String className) throws ClassNotFoundException,
             IllegalAccessException, InstantiationException {
-        if (!className.startsWith("inhouse.microg.bridge.")) {
+        if (!className.startsWith("inhouse.microg.bridge.")
+                && !className.equals("org.microg.gms.settings.SettingsProvider")) {
             throw new ClassNotFoundException("Unapproved prototype component: " + className);
         }
         try {
