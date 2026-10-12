@@ -8,7 +8,7 @@ The goal is one installed APK containing its own authentication and Google servi
 
 The exact YouTube base contains 49,728 DEX classes; the pinned GmsCore APK contains 33,098. Their intersection contains 528 duplicate class names. A direct DEX merge cannot load these implementations reliably. Blindly relocating every Google class also breaks parcelables whose class names are encoded in Bundles, including authentication `TokenData`.
 
-The experiment retains upstream class names in an isolated class loader and runs components inside a private process of the **same installed package and UID**. A separate resources context uses public Android APIs. Cross-process Binder parcels use the caller's own classes; Binder interface descriptors must stay unchanged. The standalone probe validates component creation and resource access separately from the opt-in native YouTube candidate.
+The experiment retains upstream class names in an isolated class loader and runs components inside private processes of the **same installed package and UID**. Most services use `:inhouse_gms`; DroidGuard retains its required separate Binder process as `:inhouse_gms_unstable`. A separate resources context uses public Android APIs. Cross-process Binder parcels use the caller's own classes; Binder interface descriptors must stay unchanged. The standalone probe validates component creation and resource access separately from the opt-in native YouTube candidate.
 
 `upstream.lock.json` pins the official binary, its matching source commit, digest and provenance. The module is never fetched at application runtime. A build may fetch it once after verifying that digest. Keep the original module assets and legal notices intact, along with upstream and third-party attribution. A production module still requires an audit of all included dependency licenses.
 
@@ -50,10 +50,18 @@ authenticator under YouTube's real UID. It omits unrelated providers and account
 types, uses a separate account type, and supplies host-owned metadata resources.
 
 `youtube-runtime/` keeps YouTube's original Application in its normal processes;
-only `:inhouse_gms` uses the embedded backend Application. Bundled executable assets
+only the two explicit private backend processes use the embedded backend Application. Bundled executable assets
 are hash verified and read-only. Module files, databases and preferences have
 separate names. This design does not read or migrate another app's credentials.
 Fresh authentication is required after a future supported migration.
+
+Do not collapse DroidGuard into the login process. Native Android 15/16 evidence
+showed a main-thread deadlock: local Binder callbacks synchronously requested a
+Volley result whose delivery required that same blocked main thread. The upstream
+manifest puts DroidGuard in a separate process; the host preserves that boundary
+under its own private process name, without changing signed response validation
+or installing another application. Each backend process has a distinct WebView
+data-directory suffix, while immutable payload extraction uses a shared file lock.
 
 The optional same-APK instrumentation and `run-youtube-smoke.py` test the real
 YouTube candidate without external microG. Their reports explicitly separate

@@ -16,7 +16,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 
-/** Only the :inhouse_gms process uses this application; YouTube keeps its original one. */
+/** Only the two private microG processes use this application; YouTube keeps its original one. */
 public final class BackendApplication extends Application {
     private Context backend;
 
@@ -24,7 +24,14 @@ public final class BackendApplication extends Application {
         try {
             // Android permits one WebView data-directory owner per process. Keep
             // this stable suffix before any module initializer or login activity.
-            WebView.setDataDirectorySuffix("inhouse_gms");
+            String process = Application.getProcessName();
+            if (YouTubeComponentFactory.BACKEND_PROCESS.equals(process)) {
+                WebView.setDataDirectorySuffix("inhouse_gms");
+            } else if (YouTubeComponentFactory.DROIDGUARD_PROCESS.equals(process)) {
+                WebView.setDataDirectorySuffix("inhouse_gms_unstable");
+            } else {
+                throw new IllegalStateException("Unexpected built-in services process");
+            }
             // ActivityThread casts Application.getBaseContext() to ContextImpl
             // when delivering manifest broadcasts. Preserve Android's actual base;
             // delegate only module-facing operations to a separate scoped context.

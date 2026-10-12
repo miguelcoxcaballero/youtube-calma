@@ -55,6 +55,8 @@ claims false until separate tests supply evidence. The wrapper checks that
 release catalogs, release identity and shared updater files stayed unchanged.
 
 The optional instrumentation and module payload remain inside the same APK.
+The login/token backend and DroidGuard use separate private processes under the
+same package and UID, preserving DroidGuard's upstream Binder boundary.
 The bootstrap loads microG from bundled assets; it never fetches or installs a
 separate microG app. Upstream Google authentication can obtain its normal
 challenge modules, preserving upstream verification and Android's read-only

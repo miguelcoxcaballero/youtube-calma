@@ -9,13 +9,17 @@ import android.content.ContentProvider;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 
-/** Preserve the host's CoreComponentFactory everywhere except the private backend process. */
+/** Preserve the host's CoreComponentFactory everywhere except the two private backend processes. */
 public final class YouTubeComponentFactory extends AppComponentFactory {
     // The pinned YouTube APK marks CoreComponentFactory's instantiate methods final.
     // Delegate to preserve its compatibility-wrapper behavior; do not subclass it.
     private final AppComponentFactory host = new androidx.core.app.CoreComponentFactory();
+    static final String BACKEND_PROCESS = "app.revanced.android.youtube:inhouse_gms";
+    static final String DROIDGUARD_PROCESS = "app.revanced.android.youtube:inhouse_gms_unstable";
+
     private static boolean backendProcess() {
-        return "app.revanced.android.youtube:inhouse_gms".equals(Application.getProcessName());
+        String process = Application.getProcessName();
+        return BACKEND_PROCESS.equals(process) || DROIDGUARD_PROCESS.equals(process);
     }
 
     private static boolean backendComponent(String name) {

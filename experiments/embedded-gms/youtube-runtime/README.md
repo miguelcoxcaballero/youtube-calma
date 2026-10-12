@@ -5,8 +5,10 @@ component probe. It is not a released migration and does not establish Google
 login, signed-in playback, token refresh or push delivery.
 
 The host retains YouTube's package, signing key, application and AndroidX factory
-in its normal processes. Only `:inhouse_gms` uses `BackendApplication`; declared
-module components use an isolated platform-parent class loader. The module
+in its normal processes. Only `:inhouse_gms` and `:inhouse_gms_unstable` use
+`BackendApplication`; declared module components use an isolated platform-parent
+class loader. DroidGuard retains the upstream separate-process Binder boundary:
+its network response delivery must not share a blocked client UI thread. The module
 patch wraps actual component contexts, without subclass replacement components.
 The bundled module and bridge DEX are hash verified and privately extracted as
 read-only files. Native libraries use the running process ABI. No separate APK is
@@ -31,8 +33,11 @@ classes: the original APK supplies its real implementation. Host sources belong
 in the host extension DEX, bridge sources belong exclusively in
 `assets/embedded/bridge.dex`, and the adapted module goes in
 `assets/embedded/gmscore.apk`. All module manifest components must run in
-`:inhouse_gms`; component factories must not route ordinary YouTube components to
-the module loader.
+`:inhouse_gms`, except `org.microg.gms.droidguard.core.DroidGuardService`, which
+must run in `:inhouse_gms_unstable`. Each backend process has its own stable WebView
+data-directory suffix; the verified immutable module files and ordinary backend
+storage remain shared, as in upstream. Component factories must not route ordinary
+YouTube components to the module loader.
 
 The account type is `es.inhouse.youtube.google`; the GServices and accounts
 authorities are `app.revanced.android.youtube.inhouse.gms.gservices` and
@@ -61,7 +66,8 @@ is `../run-youtube-smoke.py --api 35 --apk PATH --output-dir PATH`; API 34 and 3
 also supported. The experiment requires Android 14 for independent JobScheduler
 namespaces. It checks the actual main Application instance, private provider
 ownership, account-provider calls, an actual upstream read-only manifest receiver
-request/reply, and the token Binder before opening the private
+request/reply, the token Binder, and the separate DroidGuard service registration
+and remote broker before opening the private
 login activity through Android AccountManager's real add-account response. It
 also recreates saved state/Intent extras containing a real module Parcelable and
 framework Parcelable to verify their correct loaders. It stops at the Google

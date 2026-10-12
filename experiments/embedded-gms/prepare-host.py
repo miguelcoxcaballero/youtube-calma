@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 HOST = 'app.revanced.android.youtube'
 ORIGINAL = 'app.revanced.android.gms'
+DROID_GUARD = 'org.microg.gms.droidguard.core.DroidGuardService'
 NS = 'http://schemas.android.com/apk/res/android'
 ET.register_namespace('android', NS)
 def attr(key): return '{' + NS + '}' + key
@@ -94,7 +95,7 @@ def main():
     add(app, 'meta-data', name='firebase_messaging_notification_delegation_enabled', value='false')
     # Preserve upstream authentication/challenge defaults. Location/contact
     # providers and unrelated account types remain outside this integration.
-    components, skipped = [], []
+    components, skipped, component_processes = [], [], {}
     class_mapping = report['componentClassMapping']
     endpoint_mapping = report['endpointMappings']
     def copy(node):
@@ -116,7 +117,17 @@ def main():
         components.append(mapped)
         theme = attrs.pop('theme', original_app['attributes']['theme'])
         for key in ('label', 'icon', 'roundIcon', 'description', 'logo'): attrs.pop(key, None)
-        attrs.update(name=mapped, process=':inhouse_gms', exported='false')
+        process = ':inhouse_gms'
+        if name == DROID_GUARD:
+            # Upstream intentionally places this service in a separate process.
+            # Collapsing it into the login process makes local Binder callbacks
+            # wait on Volley while blocking the same main thread that delivers
+            # Volley responses. Preserve the real IPC boundary in this one APK.
+            if attrs.get('process') != 'com.google.android.gms.unstable':
+                raise ValueError('Pinned DroidGuard process contract changed')
+            process = ':inhouse_gms_unstable'
+        attrs.update(name=mapped, process=process, exported='false')
+        component_processes[mapped] = process
         # Avoid sharing a task or global class alias with standalone microG.
         if 'taskAffinity' in attrs: attrs['taskAffinity'] = HOST + '.inhouse.gms'
         if attrs.get('enabled', '').startswith('@'):
@@ -171,6 +182,7 @@ def main():
     (output / 'components.json').write_text(json.dumps(components, indent=2) + '\n')
     (output / 'host-registration-report.json').write_text(json.dumps({
         'componentCount': len(components), 'omittedComponents': skipped,
+        'componentProcesses': component_processes,
         'allComponentsPrivateExceptAndroidBoundServices': True, 'instrumentation': args.instrumentation,
         'backendSha256': report['outputSha256'], 'authenticatedLoginTested': False,
     }, indent=2) + '\n')

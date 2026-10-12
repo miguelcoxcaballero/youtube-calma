@@ -114,6 +114,15 @@ public final class YouTubeGmsBridge {
                 || token.applicationInfo.uid != Process.myUid() || !token.enabled || token.exported) {
             throw new SecurityException("Invalid embedded token service");
         }
+        // Upstream isolates DroidGuard. Co-locating it with its client turns
+        // Binder calls into local calls and deadlocks Volley delivery on main.
+        ServiceInfo droidGuard = manager.getServiceInfo(new ComponentName(HOST,
+                "org.microg.gms.droidguard.core.DroidGuardService"), 0);
+        if (!HOST.equals(droidGuard.packageName)
+                || !YouTubeComponentFactory.DROIDGUARD_PROCESS.equals(droidGuard.processName)
+                || droidGuard.applicationInfo.uid != Process.myUid() || !droidGuard.enabled || droidGuard.exported) {
+            throw new SecurityException("Invalid embedded DroidGuard process boundary");
+        }
         ServiceInfo login = manager.getServiceInfo(new ComponentName(HOST,
                 "org.microg.gms.auth.loginservice.GoogleLoginService"), 0);
         if (!HOST.equals(login.packageName) || !PROCESS.equals(login.processName)

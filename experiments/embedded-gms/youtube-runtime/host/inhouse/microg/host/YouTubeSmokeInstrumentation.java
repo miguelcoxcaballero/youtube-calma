@@ -16,6 +16,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
+import android.content.pm.ServiceInfo;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
@@ -144,6 +145,32 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
         } finally { context.unregisterReceiver(response); }
     }
 
+    private void droidGuardProcessBoundary(Context context) throws Exception {
+        ComponentName component = new ComponentName(HOST, "org.microg.gms.droidguard.core.DroidGuardService");
+        ServiceInfo info = context.getPackageManager().getServiceInfo(component, 0);
+        require("DroidGuard preserves a separate private backend process", HOST.equals(info.packageName)
+                && YouTubeComponentFactory.DROIDGUARD_PROCESS.equals(info.processName)
+                && info.applicationInfo.uid == Process.myUid() && info.enabled && !info.exported);
+        CountDownLatch connected = new CountDownLatch(1);
+        AtomicReference<IBinder> binder = new AtomicReference<>();
+        ServiceConnection connection = new ServiceConnection() {
+            @Override public void onServiceConnected(ComponentName name, IBinder value) {
+                binder.set(value); connected.countDown();
+            }
+            @Override public void onServiceDisconnected(ComponentName name) { connected.countDown(); }
+            @Override public void onNullBinding(ComponentName name) { connected.countDown(); }
+        };
+        boolean bound = context.bindService(new Intent("com.google.android.gms.droidguard.service.START")
+                .setComponent(component), connection, Context.BIND_AUTO_CREATE);
+        try {
+            require("isolated DroidGuard service binds", bound && connected.await(15, TimeUnit.SECONDS)
+                    && binder.get() != null && binder.get().isBinderAlive());
+            String descriptor = "com.google.android.gms.common.internal.IGmsServiceBroker";
+            require("DroidGuard exposes remote upstream broker", descriptor.equals(binder.get().getInterfaceDescriptor())
+                    && binder.get().queryLocalInterface(descriptor) == null);
+        } finally { if (bound) context.unbindService(connection); }
+    }
+
     @Override public void onStart() {
         phase("on_start");
         JSONObject report = new JSONObject();
@@ -251,6 +278,8 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                             && response.getParcelableArray("accounts").length == 0);
                 }
             } finally { if (bound) context.unbindService(connection); }
+            phase("droidguard_process_boundary");
+            droidGuardProcessBoundary(context);
             if ("true".equals(arguments.getString("openLogin"))) {
                 phase("main_webview");
                 AtomicReference<Throwable> webViewFailure = new AtomicReference<>();

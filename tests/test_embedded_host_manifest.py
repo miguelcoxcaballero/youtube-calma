@@ -56,6 +56,10 @@ MODULE_TREE = '''E: manifest
       A: android:name="org.microg.gms.checkin.CheckinService"
     E: service
       A: android:name="org.microg.gms.gcm.McsService"
+    E: service
+      A: android:name="org.microg.gms.droidguard.core.DroidGuardService"
+      A: android:process="com.google.android.gms.unstable"
+      A: android:exported="true"
     E: receiver
       A: android:name="org.microg.gms.checkin.TriggerReceiver"
       A: android:exported="true"
@@ -130,7 +134,26 @@ class EmbeddedHostManifestTest(unittest.TestCase):
         })
         for item in root.find('application'):
             if item.tag in {'activity', 'provider', 'receiver', 'service'}:
-                self.assertEqual(item.get(NS + 'process'), ':inhouse_gms')
+                expected = (':inhouse_gms_unstable' if item.get(NS + 'name') == self.module.DROID_GUARD
+                            else ':inhouse_gms')
+                self.assertEqual(item.get(NS + 'process'), expected)
+
+    def test_droidguard_keeps_separate_private_binder_process(self):
+        root = self.generate()
+        services = {item.get(NS + 'name'): item for item in root.iter('service')}
+        guard = services[self.module.DROID_GUARD]
+        self.assertEqual(guard.get(NS + 'process'), ':inhouse_gms_unstable')
+        self.assertEqual(guard.get(NS + 'exported'), 'false')
+        login = services['org.microg.gms.auth.loginservice.GoogleLoginService']
+        self.assertNotEqual(guard.get(NS + 'process'), login.get(NS + 'process'))
+        report = json.loads((self.output / 'host-registration-report.json').read_text())
+        self.assertEqual(report['componentProcesses'][self.module.DROID_GUARD], ':inhouse_gms_unstable')
+
+    def test_changed_upstream_droidguard_process_requires_review(self):
+        tree = MODULE_TREE.replace('android:process="com.google.android.gms.unstable"',
+                                   'android:process=":changed"')
+        with self.assertRaisesRegex(ValueError, 'DroidGuard process contract changed'):
+            self.generate(tree)
 
     def test_android_parsed_authenticator_has_host_string_and_new_account_type(self):
         self.generate()

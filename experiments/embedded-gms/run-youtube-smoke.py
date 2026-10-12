@@ -80,7 +80,9 @@ def structural_log(raw: str) -> str:
         if message.startswith('FATAL EXCEPTION:'):
             result.append('FATAL EXCEPTION')
         elif message.startswith('Process:') and PACKAGE in message:
-            result.append('Process: ' + (PACKAGE + ':inhouse_gms' if PACKAGE + ':inhouse_gms' in message else PACKAGE))
+            suffix = (':inhouse_gms_unstable' if PACKAGE + ':inhouse_gms_unstable' in message else
+                      ':inhouse_gms' if PACKAGE + ':inhouse_gms' in message else '')
+            result.append('Process: ' + PACKAGE + suffix)
         elif re.fullmatch(r'\s*at [A-Za-z0-9_.$<>]+\([A-Za-z0-9_.$ :\-]+\)', message):
             result.append(message.strip())
         else:
@@ -99,6 +101,7 @@ def structural_anr(raw: str) -> str:
             process = stripped.removeprefix('Cmd line: ').strip()
             role = ('YouTube main' if process == PACKAGE else
                     'embedded backend' if process == PACKAGE + ':inhouse_gms' else
+                    'DroidGuard backend' if process == PACKAGE + ':inhouse_gms_unstable' else
                     'official Google Play services' if process == 'com.google.android.gms'
                     or process.startswith('com.google.android.gms:') else 'other')
             frames.append('[' + role + ' process]')
@@ -341,7 +344,8 @@ def main() -> None:
                     available = privileged.returncode == 0 and privileged.stdout.strip() == '0'
                     report['postFailureDiagnosticSuAvailable'] = available
                     report['postFailureStackCaptures'] = {}
-                    for label, process in (('main', PACKAGE), ('backend', PACKAGE + ':inhouse_gms')):
+                    for label, process in (('main', PACKAGE), ('backend', PACKAGE + ':inhouse_gms'),
+                                           ('droidguard', PACKAGE + ':inhouse_gms_unstable')):
                         process_ids = adb('shell', 'pidof', process).stdout.strip().split()
                         present = len(process_ids) == 1 and process_ids[0].isdigit()
                         capture = {'processPresent': present}
