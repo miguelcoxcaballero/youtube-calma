@@ -20,7 +20,7 @@ jobs:
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
       - name: Prepare platform and build tools
-        run: sdkmanager 'platforms;android-35' 'build-tools;36.0.0'
+        run: '"${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"'
       - name: Build isolated debug probe (no release key)
         run: python3 experiments/embedded-gms/build-harness.py
       - name: Check embedded components without installed microG
