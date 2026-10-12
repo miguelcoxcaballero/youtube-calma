@@ -28,9 +28,10 @@ The optional `--login-entry` build/run flag adds the original login activity and
 settings provider. It opens the local sign-in introduction, presses Sign in, and
 checks whether Google's email entry page appears. It never enters an account name
 or password. Device check-in may contact Google. Use the workflow's `login_entry`
-dispatch input to request this extra profile. Its artifacts deliberately exclude
-raw logcat, page URLs, remote response text and accessibility XML; only structural
-crash stack information and boolean observations are retained. Seeing a login
+dispatch input to request this extra profile. Core component logs are saved before
+the online entry starts, then cleared. Online diagnostics deliberately exclude raw
+logcat, page URLs, remote response text and accessibility XML; only structural
+exception stacks and boolean observations are retained. Seeing a login
 page is still not proof that authentication or YouTube account access works.
 
 Dependencies are SHA-256 locked in the builder. The original GmsCore asset,

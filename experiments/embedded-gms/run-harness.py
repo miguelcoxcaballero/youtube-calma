@@ -21,8 +21,9 @@ def structural_crash_log(raw: str) -> str:
     """Retain stack structure only, never upstream request/response bodies or URLs."""
     result = []
     for line in raw.splitlines():
-        if 'AndroidRuntime' not in line: continue
-        message = line.split('AndroidRuntime', 1)[1].lstrip(' :')
+        entry = re.search(r'\s(?:AndroidRuntime|GmsAuthLoginBrowser|GmsCheckin)\s*:\s*(.*)', line)
+        if entry is None: continue
+        message = entry[1]
         if message.startswith('FATAL EXCEPTION:'):
             result.append('FATAL EXCEPTION')
         elif message.startswith('Process:') and PACKAGE in message:
@@ -46,8 +47,10 @@ def main() -> None:
     sdk = Path(os.environ.get('ANDROID_SDK_ROOT') or os.environ['ANDROID_HOME'])
     adb_binary = sdk / 'platform-tools/adb'
     report = {'api': args.api, 'googleLoginTested': False, 'youtubePlaybackTested': False,
-              'pushDeliveryTested': False, 'accountsOrCredentialsSupplied': False, 'productionRelease': False}
+              'pushDeliveryTested': False, 'accountsOrCredentialsSupplied': False, 'productionRelease': False,
+              'onlineEntryStarted': False}
     emulator = None
+    online_started = False
 
     def run(*command, timeout=60, **kwargs):
         return subprocess.run(list(map(str, command)), capture_output=True, text=True, timeout=timeout, **kwargs)
@@ -70,11 +73,17 @@ def main() -> None:
         except ET.ParseError: return []
 
     def login_entry():
+        nonlocal online_started
         state = {'credentialsEntered': False, 'googleLoginTested': False,
                  'introVisible': False, 'googleCredentialEntryVisible': False,
                  'deviceCheckinMayContactGoogle': True}
         report['loginEntry'] = state
+        # Core component checks cannot contact Google or receive credentials. Keep
+        # their useful diagnostics separate before clearing all logs for online UI.
+        (output / 'component-logcat.txt').write_text(adb('logcat', '-b', 'all', '-d').stdout)
         adb('logcat', '-b', 'all', '-c')
+        online_started = True
+        report['onlineEntryStarted'] = True
         launch = adb('shell', 'am', 'start', '-W', '-n', PACKAGE + '/org.microg.gms.auth.login.LoginActivity',
                      '--es', 'tmpl', 'new_account')
         if launch.returncode: raise RuntimeError('Embedded login entry activity failed to start')
@@ -164,7 +173,7 @@ def main() -> None:
         require(adb('shell', 'dumpsys', 'account'), 'registered-authenticators')
         if args.login_entry: login_entry()
         logs = adb('logcat', '-b', 'all', '-d').stdout
-        (output / 'logcat.txt').write_text(structural_crash_log(logs) if args.login_entry else logs)
+        (output / 'logcat.txt').write_text(structural_crash_log(logs) if online_started else logs)
         if re.search(r'Process: ' + re.escape(PACKAGE) + r'[:,\s]|ANR in ' + re.escape(PACKAGE), logs):
             raise RuntimeError('Probe app or backend process crashed/ANR')
         report['passed'] = True
@@ -174,7 +183,7 @@ def main() -> None:
     finally:
         try:
             logs = adb('logcat', '-b', 'all', '-d').stdout
-            (output / 'final-logcat.txt').write_text(structural_crash_log(logs) if args.login_entry else logs)
+            (output / 'final-logcat.txt').write_text(structural_crash_log(logs) if online_started else logs)
         except Exception: pass
         if emulator is not None:
             emulator.terminate()
