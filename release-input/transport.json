@@ -1,0 +1,100 @@
+{
+  "fileName": "YouTube-Calma-0.1.14.apk",
+  "sha256": "ccc160caab94c66aedf9a781cbe58ec837a0e7c1755c77a046ca83bc6f1ed932",
+  "sizeBytes": 285771506,
+  "sourceCommit": "c25edeac7bcfd2ceba591c3416dd01cc50d26788",
+  "version": "0.1.14",
+  "versionCode": 1557278159,
+  "parts": [
+    {
+      "fileName": "part-000.bin",
+      "sha256": "04cedf1f31ce593cd76dd4182631110de29dd5e31f01838af9f4822e67f5f074",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-001.bin",
+      "sha256": "566e71e047e23ab86a2a0f6ed33d201bef6838999840cf312e18dc54c7ca8406",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-002.bin",
+      "sha256": "dfff5068e90c1616335b36bc8fc406b5735af9ae0c998ddcb81d1afcf64223ca",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-003.bin",
+      "sha256": "f7fad6494cc4c8763959ccfb22fad5903682733bfc500e2aac9953b70469ddfb",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-004.bin",
+      "sha256": "f7bf222536526402c87793cb55bf7566fb857fd4b1421a65bf6c37f40e7a56e3",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-005.bin",
+      "sha256": "2762abae63f6354f68098b5afc1a1a2d8cc20ea89e4edc64d571e982b4d2b319",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-006.bin",
+      "sha256": "db079910e755316d8bf10089819936e51c2f3efac15262a4866360cbce4a4cdb",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-007.bin",
+      "sha256": "4cbfe49ec19686c091750e47cf60e432b192c67cdf87e6502474547449811506",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-008.bin",
+      "sha256": "cda47f8abfbeab3eeeff33050a7135c4c22003e65d1ad86a3584b0f7bec856c2",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-009.bin",
+      "sha256": "902d4817cf8c2b55a224137ecc0c421cbda8d60f782cd031ec27317b89b7c625",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-010.bin",
+      "sha256": "95377f9ff0352229f26ea49889056629d95943f541b604782480701de4978fd6",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-011.bin",
+      "sha256": "3900ec94aaf359761d61928c747699fae761b49da80682ee3f1177ccafa7f2b7",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-012.bin",
+      "sha256": "b5abd103684d9f73118e2d2271a42f3a3886a0a6eb2797a3f5ded425810efefb",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-013.bin",
+      "sha256": "7d1e4cf22ae2ecbd293ab5c679632dda4ac2af50938856ca91959c8dde35078d",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-014.bin",
+      "sha256": "03c7c80d532b95b813ea11d128a79ef0ab800aab3fbb9f0de7e8d861539752e7",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-015.bin",
+      "sha256": "cf237f135ccf17468ee29767318724682bae63fa84fe3cc75d871498be43cc68",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-016.bin",
+      "sha256": "ee5c128af523da1204e5a0b30e7cd69fa0bca6dd71f293b5db3085c85d7c2b0e",
+      "sizeBytes": 16777216
+    },
+    {
+      "fileName": "part-017.bin",
+      "sha256": "b0705a0afbcd8a555b7fd8593d63cd71ccf5ab1361d9d0548f0560b742e29519",
+      "sizeBytes": 558834
+    }
+  ]
+}
