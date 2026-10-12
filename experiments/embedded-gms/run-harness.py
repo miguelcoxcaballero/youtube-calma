@@ -20,7 +20,8 @@ PACKAGE = 'es.inhouse.gmsprobe'
 def safe_dom_records(raw: str) -> list:
     """Accept only the probe's fixed schema; reject any additional remote data."""
     records = []
-    integers = {'progress', 'ready', 'emailInputs', 'visibleEmailInputs', 'passwordInputs', 'nonHiddenInputs', 'captchaInputs'}
+    integers = {'progress', 'ready', 'emailInputs', 'visibleEmailInputs', 'passwordInputs', 'nonHiddenInputs',
+                'captchaInputs', 'visibleCaptchaInputs', 'recaptchaFrames'}
     routes = {'empty', 'other', 'google_identifier', 'google_challenge', 'google_setup', 'google_other'}
     for line in raw.splitlines():
         matched = re.search(r'\sEmbeddedGmsLoginProbe\s*:\s*(\{.*\})$', line)
@@ -188,7 +189,8 @@ def main() -> None:
                 dom = dom_records[-1]
                 if (dom.get('route') == 'google_identifier' and dom.get('visible')
                         and dom.get('progress') == 100 and dom.get('ready') == 2
-                        and dom.get('visibleEmailInputs', 0) > 0 and dom.get('captchaInputs') == 0):
+                        and dom.get('visibleEmailInputs', 0) > 0 and dom.get('visibleCaptchaInputs') == 0
+                        and not structure['captchaPromptVisible']):
                     state['googleCredentialEntryVisible'] = True
                     state['credentialEntryEvidence'] = 'Google identifier route and email-input DOM structure'
                     break

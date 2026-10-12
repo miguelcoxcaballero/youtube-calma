@@ -19,7 +19,9 @@ public final class LoginActivityBridge extends org.microg.gms.auth.login.LoginAc
         + "visibleEmailInputs:Array.prototype.filter.call(document.querySelectorAll('input[type=email],input[name=identifier],input[id=identifierId]'),function(e){return e.getClientRects().length>0;}).length,"
         + "passwordInputs:document.querySelectorAll('input[type=password]').length,"
         + "nonHiddenInputs:document.querySelectorAll('input:not([type=hidden])').length,"
-        + "captchaInputs:document.querySelectorAll('input[name=ca],input[name=captcha],iframe[src*=recaptcha]').length"
+        + "captchaInputs:document.querySelectorAll('input[name=ca],input[name=captcha]').length,"
+        + "visibleCaptchaInputs:Array.prototype.filter.call(document.querySelectorAll('input[name=ca],input[name=captcha]'),function(e){return e.getClientRects().length>0;}).length,"
+        + "recaptchaFrames:document.querySelectorAll('iframe[src*=recaptcha]').length"
         + "});})()";
     private final Runnable inspect = new Runnable() {
         @Override public void run() {
@@ -36,7 +38,7 @@ public final class LoginActivityBridge extends org.microg.gms.auth.login.LoginAc
                     try {
                         Object decoded = new JSONTokener(value).nextValue();
                         JSONObject dom = new JSONObject((String) decoded);
-                        for (String key : new String[]{"ready", "emailInputs", "visibleEmailInputs", "passwordInputs", "nonHiddenInputs", "captchaInputs"}) {
+                        for (String key : new String[]{"ready", "emailInputs", "visibleEmailInputs", "passwordInputs", "nonHiddenInputs", "captchaInputs", "visibleCaptchaInputs", "recaptchaFrames"}) {
                             structure.put(key, dom.getInt(key));
                         }
                         android.util.Log.i("EmbeddedGmsLoginProbe", structure.toString());

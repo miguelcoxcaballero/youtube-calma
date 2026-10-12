@@ -1,14 +1,18 @@
 package inhouse.microg.host;
 
 import android.accounts.AccountManager;
+import android.accounts.AccountAuthenticatorResponse;
+import android.accounts.AccountManagerFuture;
 import android.accounts.AuthenticatorDescription;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.app.job.JobScheduler;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentProviderClient;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
@@ -19,6 +23,8 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Process;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.webkit.WebView;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -51,6 +57,83 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
         catch (PackageManager.NameNotFoundException absent) { return false; }
     }
 
+    private void parcelableIsolation(Context context, Context backend) throws Exception {
+        ClassLoader isolated = backend.getClassLoader();
+        Class<?> responseType = isolated.loadClass("com.google.android.gms.auth.AccountChangeEventsResponse");
+        Parcelable original = (Parcelable) responseType.getDeclaredConstructor().newInstance();
+        Bundle state = new Bundle();
+        state.putParcelable("module", original);
+        state.putParcelable("framework", new android.graphics.Point(7, 11));
+        Bundle nested = new Bundle();
+        nested.putParcelable("module", original);
+        state.putBundle("nested", nested);
+        byte[] bytes;
+        Parcel written = Parcel.obtain();
+        try {
+            written.writeBundle(state);
+            bytes = written.marshall();
+        } finally { written.recycle(); }
+        Class<?> environment = isolated.loadClass("inhouse.microg.bridge.BackendEnvironment");
+        Parcel restored = Parcel.obtain();
+        try {
+            restored.unmarshall(bytes, 0, bytes.length);
+            restored.setDataPosition(0);
+            Bundle recreation = restored.readBundle(context.getClassLoader());
+            environment.getMethod("prepareState", Bundle.class).invoke(null, recreation);
+            Object moduleValue = recreation.getParcelable("module");
+            require("saved-state recreation restores isolated module Parcelable", responseType.isInstance(moduleValue)
+                    && moduleValue.getClass().getClassLoader() == isolated);
+            Object nestedValue = recreation.getBundle("nested").getParcelable("module");
+            require("nested saved-state recreation preserves module Parcelable loader", responseType.isInstance(nestedValue)
+                    && nestedValue.getClass().getClassLoader() == isolated);
+            android.graphics.Point point = recreation.getParcelable("framework");
+            require("saved-state isolation preserves framework Parcelable", point != null && point.x == 7 && point.y == 11);
+        } finally { restored.recycle(); }
+        Parcel intentParcel = Parcel.obtain();
+        try {
+            new Intent().putExtras(state).writeToParcel(intentParcel, 0);
+            byte[] intentBytes = intentParcel.marshall();
+            intentParcel.unmarshall(intentBytes, 0, intentBytes.length);
+            intentParcel.setDataPosition(0);
+            Intent intent = Intent.CREATOR.createFromParcel(intentParcel);
+            intent.setExtrasClassLoader(context.getClassLoader());
+            environment.getMethod("prepareIntent", Intent.class).invoke(null, intent);
+            Object intentValue = intent.getParcelableExtra("module");
+            require("intent recreation restores isolated module Parcelable", responseType.isInstance(intentValue)
+                    && intentValue.getClass().getClassLoader() == isolated);
+            android.graphics.Point point = intent.getParcelableExtra("framework");
+            require("intent isolation preserves framework Parcelable", point != null && point.x == 7 && point.y == 11);
+        } finally { intentParcel.recycle(); }
+    }
+
+    private void manifestReceiverRoundTrip(Context context, Context backend, IBinder token) throws Exception {
+        // Read-only upstream status request: no accounts, registration, boot event
+        // or push connection is created. A reply proves Android delivered the real
+        // manifest receiver, including its Application/ContextImpl framework path.
+        CountDownLatch received = new CountDownLatch(1);
+        AtomicReference<Boolean> moduleReply = new AtomicReference<>(false);
+        BroadcastReceiver response = new BroadcastReceiver() {
+            @Override public void onReceive(Context ignored, Intent intent) {
+                try {
+                    intent.setExtrasClassLoader(backend.getClassLoader());
+                    Object status = intent.getSerializableExtra("org.microg.gms.gcm.SERVICE_INFO");
+                    moduleReply.set(status != null && status.getClass().getName().equals("org.microg.gms.gcm.ServiceInfo")
+                            && status.getClass().getClassLoader() == backend.getClassLoader());
+                } catch (Throwable invalidReply) { moduleReply.set(false); }
+                finally { received.countDown(); }
+            }
+        };
+        context.registerReceiver(response, new IntentFilter("org.microg.gms.gcm.SERVICE_INFO_RESPONSE"),
+                Context.RECEIVER_NOT_EXPORTED);
+        try {
+            context.sendOrderedBroadcast(new Intent("org.microg.gms.gcm.SERVICE_INFO_REQUEST")
+                    .setComponent(new ComponentName(HOST, "org.microg.gms.gcm.ServiceInfoReceiver")), null);
+            require("actual manifest receiver delivers isolated backend status", received.await(15, TimeUnit.SECONDS)
+                    && moduleReply.get());
+            require("backend survives framework manifest receiver delivery", token.isBinderAlive());
+        } finally { context.unregisterReceiver(response); }
+    }
+
     @Override public void onStart() {
         JSONObject report = new JSONObject();
         Bundle result = new Bundle();
@@ -76,6 +159,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                     .getIdentifier("gms_app_name", "string", HOST) != 0);
             require("main Application remains unchanged after module preparation", context.getApplicationContext()
                     .getClass().getName().equals("com.google.android.apps.youtube.app.YouTubeTikTokRoot_Application"));
+            parcelableIsolation(context, backend);
             if (Build.VERSION.SDK_INT >= 34) {
                 String originalNamespace = context.getSystemService(JobScheduler.class).getNamespace();
                 require("backend jobs have their own Android scheduler namespace", "inhouse.microg".equals(
@@ -124,6 +208,7 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                         && binder.get() != null && binder.get().isBinderAlive());
                 require("token Binder exposes upstream protocol", "com.google.android.auth.IAuthManagerService"
                         .equals(binder.get().getInterfaceDescriptor()));
+                manifestReceiverRoundTrip(context, backend, binder.get());
                 for (String authority : new String[]{HOST + ".inhouse.gms.gservices", HOST + ".inhouse.gms.auth.accounts"}) {
                     ProviderInfo provider = context.getPackageManager().resolveContentProvider(authority, 0);
                     require("private owned provider: " + authority, provider != null
@@ -165,10 +250,22 @@ public final class YouTubeSmokeInstrumentation extends Instrumentation {
                     report.put("mainWebViewFailureClass", webViewFailure.get().getClass().getName());
                 }
                 require("main process initializes WebView before backend login", webViewFailure.get() == null);
-                context.startActivity(new Intent().setComponent(new ComponentName(HOST,
-                        "org.microg.gms.auth.login.LoginActivity")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra("tmpl", "new_account"));
-                require("private embedded login activity launch requested", true);
+                // Exercise Android's real account-add contract. Passing no Activity
+                // asks AccountManager to return the authenticator's intended UI; it
+                // does not add an account or supply any credentials on its own.
+                AccountManagerFuture<Bundle> addAccount = AccountManager.get(context).addAccount(
+                        ACCOUNT, null, null, new Bundle(), null, null, null);
+                Bundle accountEntry = addAccount.getResult(30, TimeUnit.SECONDS);
+                Intent login = accountEntry.getParcelable(AccountManager.KEY_INTENT);
+                require("AccountManager returns owned embedded login intent", login != null
+                        && login.getComponent() != null && HOST.equals(login.getComponent().getPackageName())
+                        && "org.microg.gms.auth.login.LoginActivity".equals(login.getComponent().getClassName()));
+                Parcelable authenticatorResponse = login.getParcelableExtra(AccountManager.KEY_ACCOUNT_AUTHENTICATOR_RESPONSE);
+                require("account-add intent carries Android authenticator response", authenticatorResponse
+                        instanceof AccountAuthenticatorResponse);
+                report.put("accountManagerAddAccountEntryExercised", true);
+                context.startActivity(login.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                require("real account-add login activity launch requested", true);
             }
             passed = true;
         } catch (Throwable error) {

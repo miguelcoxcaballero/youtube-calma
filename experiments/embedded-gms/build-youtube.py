@@ -57,6 +57,23 @@ def jar_classes(classes: Path, target: Path, prefix: str) -> None:
             archive.write(source, source.relative_to(classes).as_posix())
 
 
+def native_library_hashes(backend: Path) -> dict[str, str]:
+    """Fingerprint native payloads once at build time, after module verification."""
+    hashes = {}
+    with zipfile.ZipFile(backend) as archive:
+        for entry in sorted(archive.infolist(), key=lambda item: item.filename):
+            name = entry.filename
+            if entry.is_dir() or not name.startswith('lib/') or not name.endswith('.so'):
+                continue
+            if not re.fullmatch(r'lib/[A-Za-z0-9_-]+/[A-Za-z0-9_+.\-]+\.so', name) or '..' in name:
+                raise RuntimeError('Invalid embedded native library path: ' + name)
+            if name in hashes:
+                raise RuntimeError('Duplicate embedded native library: ' + name)
+            with archive.open(entry) as stream:
+                hashes[name] = hashlib.file_digest(stream, 'sha256').hexdigest()
+    return hashes
+
+
 def compile_runtime(args, work: Path, backend: Path, resources: Path) -> tuple[Path, Path]:
     runtime = HERE / 'youtube-runtime'
     groups = {name: sorted((runtime / name).rglob('*.java')) for name in ('host', 'bridge', 'stubs')}
@@ -85,14 +102,23 @@ def compile_runtime(args, work: Path, backend: Path, resources: Path) -> tuple[P
         raise RuntimeError('components.json must contain unique, fully qualified module class names')
     generated = work / 'generated/inhouse/microg/host/EmbeddedGmsBuild.java'
     generated.parent.mkdir(parents=True)
+    backend_sha256 = digest(backend)
+    native_hashes = native_library_hashes(backend)
+    require_pinned(backend, backend_sha256, 'Module changed while fingerprinting native libraries')
+    (work / 'native-library-hashes.json').write_text(json.dumps({
+        'moduleSha256': backend_sha256, 'libraries': native_hashes,
+    }, indent=2) + '\n')
     generated.write_text(
         'package inhouse.microg.host;\n'
         'public final class EmbeddedGmsBuild {\n'
-        f' public static final String GMS_SHA256 = "{digest(backend)}";\n'
+        f' public static final String GMS_SHA256 = "{backend_sha256}";\n'
         f' public static final String BRIDGE_SHA256 = "{digest(bridge)}";\n'
         ' public static final int BACKEND_VERSION = 250932004;\n'
         ' public static final String[] COMPONENTS = new String[] {\n'
         + ',\n'.join('  ' + json.dumps(name) for name in components)
+        + '\n };\n public static final String[][] NATIVE_LIBRARIES = new String[][] {\n'
+        + ',\n'.join('  {' + json.dumps(name) + ', ' + json.dumps(value) + '}'
+                      for name, value in native_hashes.items())
         + '\n };\n private EmbeddedGmsBuild() {}\n}\n')
     host_classes = work / 'host-classes'; host_classes.mkdir()
     run('java', '-jar', args.ecj, '-source', '1.8', '-target', '1.8', '-proc:none',

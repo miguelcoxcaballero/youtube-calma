@@ -20,10 +20,10 @@ val embeddedGmsResourcesPatch = resourcePatch(name = "YouTube Calma experimental
             val manifest = xml.documentElement
             val sdk = manifest.getElementsByTagName("uses-sdk").item(0) as? Element
                 ?: xml.createElement("uses-sdk").also { manifest.insertBefore(it, manifest.firstChild) }
-            // The experimental runtime/D8 contract starts at Android 11. Never
-            // advertise installation on older systems that it cannot initialize.
             val minimum = sdk.getAttribute("android:minSdkVersion").toIntOrNull() ?: 1
-            if (minimum < 30) sdk.setAttribute("android:minSdkVersion", "30")
+            // The isolated backend requires Android's real JobScheduler namespaces.
+            // Older systems share the host's scheduler and job-ID space.
+            if (minimum < 34) sdk.setAttribute("android:minSdkVersion", "34")
             val application = manifest.getElementsByTagName("application").item(0) as Element
             val children = fragment.documentElement.childNodes
             for (i in 0 until children.length) {

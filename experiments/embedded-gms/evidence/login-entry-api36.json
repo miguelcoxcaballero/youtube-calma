@@ -1,0 +1,231 @@
+{
+  "api": 36,
+  "googleLoginTested": false,
+  "youtubePlaybackTested": false,
+  "pushDeliveryTested": false,
+  "accountsOrCredentialsSupplied": false,
+  "productionRelease": false,
+  "onlineEntryStarted": true,
+  "apkSha256": "e0c0a14c4c96f0cb7272eceb2278bd26777af12fa03f630965047026cb22709e",
+  "externalMicrogAbsentBefore": true,
+  "officialGooglePlayServicesPresent": true,
+  "components": {
+    "googleLoginTested": false,
+    "youtubePlaybackTested": false,
+    "pushDeliveryTested": false,
+    "accountsOrCredentialsSupplied": false,
+    "scope": "same-APK class/resources/provider/authenticator/Binder plumbing",
+    "resourceLookup": {
+      "compiledLabelId": "7f120132",
+      "assetLocaleCount": 135,
+      "app.revanced.android.gms": 2131886386,
+      "com.google.android.gms": 0,
+      "android": 0,
+      "es.inhouse.gmsprobe": 0,
+      "actualPackage": "app.revanced.android.gms",
+      "compiledLabelText": "microG Services"
+    },
+    "backendLabel": "microG Services",
+    "startupStrategy": "bind embedded service before provider access",
+    "passed": true,
+    "checks": [
+      {
+        "name": "external package absent: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "external package absent: com.mgoogle.android.gms",
+        "passed": true
+      },
+      {
+        "name": "backend classes use isolated loader",
+        "passed": true
+      },
+      {
+        "name": "backend classes absent from host loader",
+        "passed": true
+      },
+      {
+        "name": "backend Kotlin library isolated",
+        "passed": true
+      },
+      {
+        "name": "original backend resource table resolves by name",
+        "passed": true
+      },
+      {
+        "name": "original backend resources readable",
+        "passed": true
+      },
+      {
+        "name": "host resources remain isolated",
+        "passed": true
+      },
+      {
+        "name": "system resources unmodified: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "host resources exclude backend: app.revanced.android.gms",
+        "passed": true
+      },
+      {
+        "name": "system resources unmodified: com.google.android.gms",
+        "passed": true
+      },
+      {
+        "name": "host resources exclude backend: com.google.android.gms",
+        "passed": true
+      },
+      {
+        "name": "provider belongs to only installed probe APK",
+        "passed": true
+      },
+      {
+        "name": "provider uses separate backend process",
+        "passed": true
+      },
+      {
+        "name": "auth Binder descriptor is real upstream interface",
+        "passed": true
+      },
+      {
+        "name": "real Gservices provider stores value",
+        "passed": true
+      },
+      {
+        "name": "real Gservices provider reads stored value",
+        "passed": true
+      },
+      {
+        "name": "auth Binder getChangeEvents transaction accepted",
+        "passed": true
+      },
+      {
+        "name": "auth Binder returns parcelable response",
+        "passed": true
+      },
+      {
+        "name": "auth response deserializes through upstream CREATOR",
+        "passed": true
+      },
+      {
+        "name": "auth response Parcel fully consumed",
+        "passed": true
+      },
+      {
+        "name": "auth response contains expected empty event list",
+        "passed": true
+      },
+      {
+        "name": "Android AccountManager registers embedded authenticator",
+        "passed": true
+      },
+      {
+        "name": "login Binder is real Android authenticator",
+        "passed": true
+      }
+    ]
+  },
+  "onlyProbeApkInstalled": true,
+  "loginEntry": {
+    "credentialsEntered": false,
+    "googleLoginTested": false,
+    "introVisible": true,
+    "googleCredentialEntryVisible": true,
+    "deviceCheckinMayContactGoogle": true,
+    "signInButtonActivated": true,
+    "uiStates": [
+      {
+        "nodeCount": 14,
+        "webViewVisible": false,
+        "editableFieldCount": 0,
+        "credentialLabelOrIdRecognized": false,
+        "emailWordVisible": false,
+        "phoneWordVisible": false,
+        "signInHeadingVisible": false,
+        "forgotEmailVisible": false,
+        "captchaPromptVisible": false,
+        "progressIndicatorVisible": true,
+        "connectingMessageVisible": true,
+        "justASecVisible": true,
+        "sorryVisible": false,
+        "nextButtonVisible": false,
+        "networkErrorVisible": false
+      },
+      {
+        "nodeCount": 15,
+        "webViewVisible": true,
+        "editableFieldCount": 0,
+        "credentialLabelOrIdRecognized": false,
+        "emailWordVisible": false,
+        "phoneWordVisible": false,
+        "signInHeadingVisible": false,
+        "forgotEmailVisible": false,
+        "captchaPromptVisible": false,
+        "progressIndicatorVisible": true,
+        "connectingMessageVisible": true,
+        "justASecVisible": true,
+        "sorryVisible": false,
+        "nextButtonVisible": false,
+        "networkErrorVisible": false
+      },
+      {
+        "nodeCount": 43,
+        "webViewVisible": true,
+        "editableFieldCount": 1,
+        "credentialLabelOrIdRecognized": true,
+        "emailWordVisible": true,
+        "phoneWordVisible": true,
+        "signInHeadingVisible": true,
+        "forgotEmailVisible": true,
+        "captchaPromptVisible": false,
+        "progressIndicatorVisible": true,
+        "connectingMessageVisible": true,
+        "justASecVisible": true,
+        "sorryVisible": false,
+        "nextButtonVisible": true,
+        "networkErrorVisible": false
+      }
+    ],
+    "domStates": [
+      {
+        "progress": 100,
+        "visible": false,
+        "route": "empty",
+        "ready": 2,
+        "emailInputs": 0,
+        "visibleEmailInputs": 0,
+        "passwordInputs": 0,
+        "nonHiddenInputs": 0,
+        "captchaInputs": 0
+      },
+      {
+        "progress": 70,
+        "visible": false,
+        "route": "google_identifier",
+        "ready": 1,
+        "emailInputs": 1,
+        "visibleEmailInputs": 1,
+        "passwordInputs": 0,
+        "nonHiddenInputs": 2,
+        "captchaInputs": 1
+      },
+      {
+        "progress": 100,
+        "visible": true,
+        "route": "google_identifier",
+        "ready": 2,
+        "emailInputs": 1,
+        "visibleEmailInputs": 1,
+        "passwordInputs": 0,
+        "nonHiddenInputs": 2,
+        "captchaInputs": 1
+      }
+    ],
+    "credentialEntryEvidence": "Recognized credential field in WebView accessibility tree"
+  },
+  "passed": true,
+  "sourceCommit": "e0fe92ea70efc8b238013b7ab2da3ebd45656db5",
+  "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38254838639"
+}

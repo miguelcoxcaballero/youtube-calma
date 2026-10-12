@@ -156,7 +156,8 @@ def main():
         changes = json.loads(mutations.read_text())
         required_methods = {
             'wrap': '(Landroid/content/Context;)Landroid/content/Context;',
-            'prepareActivity': '(Landroid/app/Activity;)V',
+            'prepareActivity': '(Landroid/app/Activity;Landroid/os/Bundle;)V',
+            'prepareIntent': '(Landroid/content/Intent;)V',
             'startForeground': '(Landroid/app/Service;ILandroid/app/Notification;)V',
             'scheduleAlarm': '(Landroid/app/AlarmManager;IJLandroid/app/PendingIntent;)V',
             'writeReadOnlyVm': '(Ljava/io/File;[B)V',
@@ -184,6 +185,7 @@ def main():
             'runtimeRequirements': [
                 'Host manifest must use mapped authorities and signature permissions, accountType and backend process.',
                 'Host manifest must provide original theme IDs in per-activity inhouse.gms.theme metadata.',
+                'Activity Intent/saved-state and manifest receiver Intent extras must use the isolated module classloader before original callbacks run.',
                 'Host must grant FGS/dataSync/specialUse permissions, declare types, and use host-resolvable notification icons.',
                 'Background/boot-start restrictions, dataSync timeout and reconnect lifecycle need device validation.',
                 'DroidGuard VM write/load hooks require private regular files with read-only mode before dynamic loading; original signed-response checks are unchanged.',

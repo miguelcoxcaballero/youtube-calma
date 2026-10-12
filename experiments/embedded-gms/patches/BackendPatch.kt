@@ -214,11 +214,11 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
                 "provider" -> hook("attachInfo", listOf(CONTEXT, "Landroid/content/pm/ProviderInfo;"),
                     "invoke-static/range {p1 .. p1}, $ENV->wrap($CONTEXT)$CONTEXT\nmove-result-object p1", AccessFlags.PUBLIC.value)
                 "receiver" -> hook("onReceive", listOf(CONTEXT, "Landroid/content/Intent;"),
-                    "invoke-static/range {p1 .. p1}, $ENV->wrap($CONTEXT)$CONTEXT\nmove-result-object p1", AccessFlags.PUBLIC.value)
+                    "invoke-static/range {p1 .. p1}, $ENV->wrap($CONTEXT)$CONTEXT\nmove-result-object p1\ninvoke-static/range {p2 .. p2}, $ENV->prepareIntent(Landroid/content/Intent;)V", AccessFlags.PUBLIC.value)
                 else -> error("Unknown component kind")
             }
             if (kind == "activity") hook("onCreate", listOf("Landroid/os/Bundle;"),
-                "invoke-static/range {p0 .. p0}, $ENV->prepareActivity(Landroid/app/Activity;)V", AccessFlags.PROTECTED.value)
+                "invoke-static/range {p0 .. p1}, $ENV->prepareActivity(Landroid/app/Activity;Landroid/os/Bundle;)V", AccessFlags.PROTECTED.value)
         }
         check(foregroundHooks == 1) { "Expected exactly one foreground promotion call, found $foregroundHooks" }
         check(alarmHooks == 2) { "Expected two MCS exact alarm calls, found $alarmHooks" }
@@ -227,7 +227,10 @@ val embeddedBackend = bytecodePatch(name = "Inhouse same-APK microG backend") {
         check(stringChanges.isNotEmpty() && fieldChanges.isNotEmpty() && redactions.isNotEmpty())
         val report = "{" + listOf(
             "stringRewrites" to stringChanges, "fieldRewrites" to fieldChanges,
-            "contextAndThemeHooks" to hooks, "redactedLogCalls" to redactions, "droidGuardReadOnlyHooks" to droidGuardHooks,
+            "contextAndThemeHooks" to hooks,
+            "parcelableClassLoaderHooks" to componentHooks.filter { (_, kind) -> kind == "activity" || kind == "receiver" }
+                .map { (type, kind) -> type + if (kind == "activity") "->onCreate(Bundle):intent and saved-state classloaders" else "->onReceive(Context,Intent):intent classloader" },
+            "redactedLogCalls" to redactions, "droidGuardReadOnlyHooks" to droidGuardHooks,
             "foregroundHooks" to listOf(foregroundHooks.toString()), "alarmHooks" to listOf(alarmHooks.toString()), "notificationHooks" to listOf(notificationHooks.toString())
         ).joinToString(",") { (key, values) -> quoted(key) + ":[" + values.joinToString(",") { quoted(it) } + "]" } + "}"
         File(System.getProperty("inhouse.backend.report") ?: error("Report path required")).writeText(report)

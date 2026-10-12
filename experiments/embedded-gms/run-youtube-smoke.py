@@ -92,10 +92,12 @@ def structural_log(raw: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--api', type=int, choices=(35, 36), required=True)
+    parser.add_argument('--api', type=int, choices=(34, 35, 36), required=True)
     parser.add_argument('--apk', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, default=ROOT / 'build/youtube-embedded-smoke/evidence')
     parser.add_argument('--existing-emulator', action='store_true', help='Use an already running disposable emulator-5554')
+    parser.add_argument('--disable-official-gms', action='store_true',
+                        help='Disable system Google Play Services on this disposable emulator to expose missed routing')
     parser.add_argument('--components-only', action='store_true', help='Stop before opening the sign-in entry UI')
     args = parser.parse_args()
     output = args.output_dir.resolve()
@@ -173,6 +175,17 @@ def main() -> None:
             raise RuntimeError('Test requires a clean device without YouTube Calma or external microG')
         report['externalMicrogAbsentBefore'] = True
         report['officialGooglePlayServicesPresent'] = 'com.google.android.gms' in before
+        report['officialGooglePlayServicesDisabled'] = False
+        if args.disable_official_gms:
+            if not report['officialGooglePlayServicesPresent']:
+                raise RuntimeError('Requested official-services isolation requires the Google APIs test image')
+            require(adb('shell', 'pm', 'disable-user', '--user', '0', 'com.google.android.gms'),
+                    'Cannot disable system Google Play Services on disposable emulator')
+            disabled = set(re.findall(r'^package:(\S+)', require(adb('shell', 'pm', 'list', 'packages', '-d'),
+                                                                'Disabled package listing failed'), re.MULTILINE))
+            if 'com.google.android.gms' not in disabled:
+                raise RuntimeError('System Google Play Services remained enabled')
+            report['officialGooglePlayServicesDisabled'] = True
         require(adb('install', '--no-incremental', args.apk, timeout=240), 'Candidate APK installation failed')
         after = package_set()
         if after - before != {PACKAGE} or after & FORBIDDEN:

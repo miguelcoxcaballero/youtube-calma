@@ -8,7 +8,7 @@ The goal is one installed APK containing its own authentication and Google servi
 
 The exact YouTube base contains 49,728 DEX classes; the pinned GmsCore APK contains 33,098. Their intersection contains 528 duplicate class names. A direct DEX merge cannot load these implementations reliably. Blindly relocating every Google class also breaks parcelables whose class names are encoded in Bundles, including authentication `TokenData`.
 
-The experiment retains upstream class names in an isolated class loader and runs components inside a private process of the **same installed package and UID**. A separate resources context uses public Android APIs. Cross-process Binder parcels use the caller's own classes; Binder interface descriptors must stay unchanged. This design must prove actual component creation and resource access before touching YouTube's launcher or login flow.
+The experiment retains upstream class names in an isolated class loader and runs components inside a private process of the **same installed package and UID**. A separate resources context uses public Android APIs. Cross-process Binder parcels use the caller's own classes; Binder interface descriptors must stay unchanged. The standalone probe validates component creation and resource access separately from the opt-in native YouTube candidate.
 
 `upstream.lock.json` pins the official binary, its matching source commit, digest and provenance. The module is never fetched at application runtime. A build may fetch it once after verifying that digest. Keep the original module assets and legal notices intact, along with upstream and third-party attribution. A production module still requires an audit of all included dependency licenses.
 
@@ -25,7 +25,7 @@ The upstream module targets API 29 while YouTube targets API 35. Foreground serv
 
 Existing credentials belong to the external authenticator and its signing identity. Do not read its private data, bypass Android account protections, or promise automatic session migration. A production embedded authenticator must use its own account type and require a new sign-in.
 
-The pinned upstream `AuthResponse.toString()` includes credentials, and `AuthManagerServiceImpl` logs responses. Remove credential logging in the production module before running any authenticated test. The probe supplies no credentials and tests only local component operations; its logcat artifacts must never contain a real sign-in session.
+The pinned original binary contains credential logging. The experimental YouTube backend patch removes sensitive authentication/check-in log calls and redacts `AuthResponse.toString()`; the standalone probe still uses the original binary. Neither test supplies credentials. The optional login-entry profile contacts Google but exports only allowlisted structural diagnostics after opening sign-in. Never capture a real sign-in session in CI logs or artifacts.
 
 ## Release acceptance
 
@@ -61,10 +61,12 @@ component availability and a credential-free login page from a completed login,
 authenticated playback, token refresh and notification delivery. The latter
 still require real device/account evidence before publication.
 
-## Verified component result
+## Verified results
 
 Commit `db5f29bd146c43b041f8eea316343ffefddfedcd` passed all 24 component checks on Android API 35 and 36 in [run 38248074063](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38248074063). Both devices had official Google Play Services, neither had external microG, and the probe was the only newly installed package. The tests covered isolated code/resources, the actual GServices provider, Android authenticator registration and a real Binder/Parcelable round trip. Credential-free reports are preserved in `evidence/components-api35.json` and `evidence/components-api36.json`.
 
-This proves the component architecture only. It does not change the release acceptance requirements above. The separate login-entry profile may open the upstream Google login page without entering any credentials; even a passing page test is not authenticated sign-in or YouTube playback.
+Commit `e0fe92ea70efc8b238013b7ab2da3ebd45656db5` also passed the standalone login-entry profile on Android API 36 in [run 38254838639](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38254838639). All 24 component checks passed, and the visible Google sign-in page exposed its email/phone field through accessibility. No external microG was installed and no account details were entered. The sanitized report, including its source commit and workflow link, is preserved in [`evidence/login-entry-api36.json`](evidence/login-entry-api36.json).
+
+This proves component operation and a credential-free login page in the standalone probe. It does not establish completed authentication, native YouTube playback or notification delivery, and it does not change the release acceptance requirements above.
 
 Any eventual automatic release goes to A. B still requires an explicit request, and A includes newer B releases as specified in the repository's `AGENTS.md`.

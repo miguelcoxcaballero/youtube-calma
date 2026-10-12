@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [35, 36]
+        api: [34, 35, 36]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -109,9 +109,12 @@ jobs:
           with apk.open('rb') as stream:
               if hashlib.file_digest(stream, 'sha256').hexdigest() != report['apkSha256']:
                   raise RuntimeError('Candidate differs from its immutable build report')
-          subprocess.run(['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
-                          '--api', '${{ matrix.api }}', '--apk', str(apk),
-                          '--output-dir', str(output / 'evidence')], check=True)
+          command = ['python3', 'experiments/embedded-gms/run-youtube-smoke.py',
+                     '--api', '${{ matrix.api }}', '--apk', str(apk),
+                     '--output-dir', str(output / 'evidence')]
+          if '${{ matrix.api }}' == '34':
+              command.append('--disable-official-gms')
+          subprocess.run(command, check=True)
           PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()

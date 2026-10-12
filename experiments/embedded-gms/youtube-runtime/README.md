@@ -12,13 +12,18 @@ The bundled module and bridge DEX are hash verified and privately extracted as
 read-only files. Native libraries use the running process ABI. No separate APK is
 installed or downloaded. The module resource archive is accessed with the public
 `getResourcesForApplication(ApplicationInfo)` overload; the host's real package,
-UID and `PackageManager` authentication checks remain intact.
+UID and `PackageManager` authentication checks remain intact. The backend
+Application keeps Android's original `ContextImpl` base for framework receiver
+delivery, while delegating module resources/storage/services to a separate scoped
+context; wrapping this Application is idempotent.
 
 Build integration must generate `inhouse.microg.host.EmbeddedGmsBuild` with:
 
 - `public static final String GMS_SHA256` — exact adapted module hash.
 - `public static final String BRIDGE_SHA256` — exact bridge DEX hash.
 - `public static final int BACKEND_VERSION = 250932004`.
+- `public static final String[][] NATIVE_LIBRARIES` — pinned archive paths and
+  SHA-256 hashes of the native libraries, verified again after extraction.
 - `public static final String[] COMPONENTS` — exact registered module classes.
 
 Only compile `stubs/` to resolve the host AndroidX factory. Never package its
@@ -52,10 +57,15 @@ notifications use a small icon that SystemUI can resolve from the installed host
 An explicit instrumentation build may register
 `inhouse.microg.host.YouTubeSmokeInstrumentation`, targeting the existing YouTube
 package. It needs no additional permission and installs no test APK. The runner
-is `../run-youtube-smoke.py --api 35 --apk PATH --output-dir PATH`; API 36 is also
-supported. It checks the actual main Application instance, private provider
-ownership, account-provider calls and the token Binder before opening the private
-login activity. It stops at the Google email-entry page without entering any
+is `../run-youtube-smoke.py --api 35 --apk PATH --output-dir PATH`; API 34 and 36 are
+also supported. The experiment requires Android 14 for independent JobScheduler
+namespaces. It checks the actual main Application instance, private provider
+ownership, account-provider calls, an actual upstream read-only manifest receiver
+request/reply, and the token Binder before opening the private
+login activity through Android AccountManager's real add-account response. It
+also recreates saved state/Intent extras containing a real module Parcelable and
+framework Parcelable to verify their correct loaders. It stops at the Google
+email-entry page without entering any
 credentials. Its artifacts retain structural checks, exceptions and bootstrap
 timings; raw UI text, URLs and upstream log messages are never saved.
 

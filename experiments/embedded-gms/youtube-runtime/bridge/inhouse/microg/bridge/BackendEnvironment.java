@@ -10,6 +10,7 @@ import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -17,6 +18,7 @@ import android.content.res.Resources;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Process;
+import android.os.Bundle;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
@@ -46,13 +48,14 @@ public final class BackendEnvironment {
     public static Context wrap(Context context) {
         if (context == null) throw new NullPointerException("Backend context");
         if (resources == null || classLoader == null) throw new IllegalStateException("Backend environment not configured");
-        // Android can attach providers using our Application, whose base is already
-        // wrapped. Keep the original outer identity (Application/Activity/window),
-        // otherwise preference names and file paths acquire a second namespace.
+        // The backend Application retains Android's raw ContextImpl base for
+        // framework receiver delivery, and delegates module operations separately.
+        // Recognize its exact registered identity as well as wrapped Contexts, so
+        // providers never acquire a second storage namespace.
         IdentityHashMap<Context, Boolean> visited = new IdentityHashMap<>();
         Context current = context;
         while (current != null) {
-            if (current instanceof BackendContext) return context;
+            if (current == application || current instanceof BackendContext) return context;
             if (visited.put(current, Boolean.TRUE) != null) throw new IllegalStateException("Cyclic backend context chain");
             if (!(current instanceof ContextWrapper)) break;
             current = ((ContextWrapper) current).getBaseContext();
@@ -62,6 +65,23 @@ public final class BackendEnvironment {
 
     /** The build stores the module's resource ID as data, not a host resource reference. */
     public static void prepareActivity(Activity activity) {
+        prepareActivity(activity, null);
+    }
+
+    public static void prepareState(Bundle state) {
+        if (classLoader == null) throw new IllegalStateException("Backend environment not configured");
+        if (state != null) state.setClassLoader(classLoader);
+    }
+
+    public static void prepareIntent(Intent intent) {
+        if (classLoader == null) throw new IllegalStateException("Backend environment not configured");
+        if (intent != null) intent.setExtrasClassLoader(classLoader);
+    }
+
+    /** ActivityThread initially assigns the installed host loader, before this module hook. */
+    public static void prepareActivity(Activity activity, Bundle savedState) {
+        prepareIntent(activity.getIntent());
+        prepareState(savedState);
         try {
             ActivityInfo info = activity.getPackageManager().getActivityInfo(
                     activity.getComponentName(), PackageManager.GET_META_DATA);

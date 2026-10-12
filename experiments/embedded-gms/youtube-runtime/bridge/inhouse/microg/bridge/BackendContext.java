@@ -115,9 +115,12 @@ public final class BackendContext extends ContextWrapper {
     @Override public boolean deleteSharedPreferences(String name) {
         return super.deleteSharedPreferences(scoped(name));
     }
+    private static Context storageSource(Context source) {
+        if (source == BackendEnvironment.application) return BackendEnvironment.application.getBaseContext();
+        return source instanceof BackendContext ? ((BackendContext) source).getBaseContext() : source;
+    }
     @Override public boolean moveSharedPreferencesFrom(Context source, String name) {
-        Context base = source instanceof BackendContext ? ((BackendContext) source).getBaseContext() : source;
-        return super.moveSharedPreferencesFrom(base, scoped(name));
+        return super.moveSharedPreferencesFrom(storageSource(source), scoped(name));
     }
     private String databaseName(String supplied) {
         if (supplied == null || !new File(supplied).isAbsolute()) return scoped(supplied);
@@ -145,8 +148,7 @@ public final class BackendContext extends ContextWrapper {
     }
     @Override public boolean deleteDatabase(String name) { return super.deleteDatabase(databaseName(name)); }
     @Override public boolean moveDatabaseFrom(Context source, String name) {
-        Context base = source instanceof BackendContext ? ((BackendContext) source).getBaseContext() : source;
-        return super.moveDatabaseFrom(base, scoped(name));
+        return super.moveDatabaseFrom(storageSource(source), scoped(name));
     }
     @Override public String[] databaseList() {
         List<String> names = new ArrayList<>();

@@ -17,7 +17,9 @@ import java.nio.channels.FileLock;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -31,7 +33,7 @@ public final class EmbeddedRuntime {
     private EmbeddedRuntime(Context host) throws Exception {
         long started = android.os.SystemClock.elapsedRealtime();
         stage("start", started);
-        if (Build.VERSION.SDK_INT < 30) throw new UnsupportedOperationException("Android 11 is required");
+        if (Build.VERSION.SDK_INT < 34) throw new UnsupportedOperationException("This embedded experiment requires Android 14");
         validateDigest(EmbeddedGmsBuild.GMS_SHA256);
         validateDigest(EmbeddedGmsBuild.BRIDGE_SHA256);
         File root = directory(new File(host.getCodeCacheDir(), "inhouse-embedded-gms"));
@@ -160,34 +162,71 @@ public final class EmbeddedRuntime {
     private static File extractLibraries(File archive, File payload) throws Exception {
         String[] candidates = Process.is64Bit() ? Build.SUPPORTED_64_BIT_ABIS : Build.SUPPORTED_32_BIT_ABIS;
         try (ZipFile zip = new ZipFile(archive)) {
-            for (String abi : candidates) {
-                String prefix = "lib/" + abi + "/";
-                List<ZipEntry> entries = new ArrayList<>();
-                Enumeration<? extends ZipEntry> all = zip.entries();
-                while (all.hasMoreElements()) {
-                    ZipEntry entry = all.nextElement();
-                    if (!entry.isDirectory() && entry.getName().startsWith(prefix)
-                            && entry.getName().endsWith(".so")) entries.add(entry);
-                }
-                if (entries.isEmpty()) continue;
-                File destination = directory(new File(payload, "lib-" + abi));
-                for (ZipEntry entry : entries) {
-                    String name = entry.getName().substring(prefix.length());
-                    if (name.indexOf('/') >= 0 || name.indexOf('\\') >= 0 || name.contains("..")) {
-                        throw new SecurityException("Invalid embedded native library name");
-                    }
-                    String expected;
-                    try (InputStream input = zip.getInputStream(entry)) { expected = sha256(input); }
-                    File target = new File(destination, name);
-                    if (target.isFile() && expected.equals(sha256(target))) protect(target);
-                    else try (InputStream input = zip.getInputStream(entry)) { publish(input, target, expected); }
-                }
-                return destination;
+            return extractLibraries(zip, payload, candidates, EmbeddedGmsBuild.NATIVE_LIBRARIES);
+        }
+    }
+
+    private static File extractLibraries(ZipFile zip, File payload, String[] candidates,
+            String[][] fingerprints) throws Exception {
+        // The complete archive has already passed GMS_SHA256. Its native inventory
+        // must also match the build-generated pins, including ABIs not used here.
+        Map<String, String> expected = new LinkedHashMap<>();
+        for (String[] fingerprint : fingerprints) {
+            if (fingerprint == null || fingerprint.length != 2) {
+                throw new SecurityException("Invalid embedded native fingerprint");
             }
+            validateLibraryPath(fingerprint[0]);
+            validateDigest(fingerprint[1]);
+            if (expected.put(fingerprint[0], fingerprint[1]) != null) {
+                throw new SecurityException("Duplicate embedded native fingerprint");
+            }
+        }
+        Map<String, ZipEntry> archiveEntries = new LinkedHashMap<>();
+        Enumeration<? extends ZipEntry> all = zip.entries();
+        while (all.hasMoreElements()) {
+            ZipEntry entry = all.nextElement();
+            String name = entry.getName();
+            if (entry.isDirectory() || !name.startsWith("lib/") || !name.endsWith(".so")) continue;
+            validateLibraryPath(name);
+            if (archiveEntries.put(name, entry) != null) {
+                throw new SecurityException("Duplicate embedded native archive entry");
+            }
+        }
+        if (!expected.keySet().equals(archiveEntries.keySet())) {
+            throw new SecurityException("Embedded native inventory differs from build fingerprints");
+        }
+        for (String abi : candidates) {
+            String prefix = "lib/" + abi + "/";
+            List<String> entries = new ArrayList<>();
+            for (String name : expected.keySet()) if (name.startsWith(prefix)) entries.add(name);
+            if (entries.isEmpty()) continue;
+            File destination = directory(new File(payload, "lib-" + abi));
+            for (String path : entries) {
+                String hash = expected.get(path);
+                File target = new File(destination, path.substring(prefix.length()));
+                if (target.isFile() && hash.equals(sha256(target))) {
+                    protect(target);
+                } else {
+                    // Never inflate solely to calculate an expected hash. A cold or
+                    // corrupt cache needs one verified inflate/write; warm caches
+                    // need only their file hash and readonly permission check.
+                    try (InputStream input = zip.getInputStream(archiveEntries.get(path))) {
+                        publish(input, target, hash);
+                    }
+                }
+            }
+            return destination;
         }
         // Components using a native library will report their real unsupported-ABI error.
         // Java-only service registration is not proof that authentication or Cronet works.
         return null;
+    }
+
+    private static void validateLibraryPath(String name) {
+        if (name == null || !name.matches("lib/[A-Za-z0-9_-]+/[A-Za-z0-9_+.\\-]+\\.so")
+                || name.contains("..")) {
+            throw new SecurityException("Invalid embedded native library path");
+        }
     }
 
     private static void protect(File path) throws Exception {

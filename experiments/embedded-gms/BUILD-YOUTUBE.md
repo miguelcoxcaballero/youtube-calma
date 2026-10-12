@@ -8,6 +8,12 @@ Its current version code is intentional for local experiments; it is not a
 distributable update. Successful compilation does not establish Google sign-in,
 signed-in playback, notification delivery or upgrade compatibility.
 
+The experimental candidate requires Android 14 (API 34) or newer so its background
+jobs use a separate Android JobScheduler namespace. Android 11–13 share one
+scheduler and job-ID space with YouTube, so work can collide between the two;
+those versions are blocked until proper isolation is implemented. The production
+app's minimum Android version is unchanged.
+
 ```sh
 python3 experiments/embedded-gms/build-youtube.py \
   --gms-apk /path/to/pinned-original-gmscore.apk \
@@ -56,6 +62,7 @@ code requirements. External microG accounts and tokens are not copied into the
 new authenticator.
 
 CI compiles one disposable candidate, then tests that exact artifact on Android
-15 and 16 in parallel. Each runner verifies the APK against its shared build
+14, 15 and 16 in parallel. The Android 14 job disables official Google services;
+the other jobs also check coexistence with them. Each runner verifies the APK against its shared build
 report before installing it. Only the debug APK and build evidence are shared;
 no signing key or unrelated build files are uploaded.
