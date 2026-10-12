@@ -223,6 +223,10 @@ def main() -> None:
     required_root = (ROOT / 'build/embedded-youtube').resolve()
     if output != required_root and required_root not in output.parents:
         parser.error('--output-dir must be build/embedded-youtube or a directory inside it')
+    java = run('java', '-version', capture_output=True, text=True)
+    java_version = re.search(r'version\s+"(\d+)', java.stdout + java.stderr)
+    if not java_version or int(java_version[1]) < 21:
+        raise RuntimeError('The pinned Morphe patcher requires Java 21 or newer; select that JDK before building')
     require_pinned(args.stock, json.loads((ROOT / 'base.lock.json').read_text())['sha256'], 'YouTube input')
     require_pinned(args.gms_apk, json.loads((HERE / 'upstream.lock.json').read_text())['apkSha256'], 'Upstream GmsCore')
     require_pinned(args.morphe, json.loads((ROOT / 'tools.lock.json').read_text())['morphe']['sha256'], 'Morphe tool')

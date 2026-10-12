@@ -22,6 +22,12 @@ jobs:
           persist-credentials: false
       - name: Enable emulator acceleration
         run: sudo chmod 666 /dev/kvm
+      - name: Select Java 21 for the pinned APK patcher
+        run: |
+          test -d "$JAVA_HOME_21_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+          "$JAVA_HOME_21_X64/bin/java" -version
       - name: Prepare platform and existing build tools
         run: |
           "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"

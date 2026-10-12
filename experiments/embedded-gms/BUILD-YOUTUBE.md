@@ -21,7 +21,8 @@ a password other than the local build default. The ordinary signing path never
 creates a key. CI may use `--debug-signing --instrumentation` instead of
 `--keystore`; that explicit test-only path generates a disposable certificate
 under the experiment output and cannot upgrade an installed Calma release.
-Android tools default to the repository's existing `tools/android-15`, API 35
+Java 21 or newer is required by the pinned Morphe patcher. Android tools default
+to the repository's existing `tools/android-15`, API 35
 stubs and ECJ; pass `--build-tools`, `--android-jar` and `--ecj` to override them.
 The original YouTube APK, GmsCore input and Morphe JAR must match their checked-in
 SHA-256 pins before work begins.

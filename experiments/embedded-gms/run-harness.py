@@ -17,14 +17,46 @@ ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = 'es.inhouse.gmsprobe'
 
 
+def login_ui_structure(nodes) -> dict:
+    """Classify a fresh login UI without retaining remote or user-entered text."""
+    texts = {(node.get(attribute) or '').casefold().strip() for node in nodes
+             for attribute in ('text', 'content-desc', 'hint')}
+    credential = bool(texts & {'email or phone', 'email address', 'enter your email', 'email'})
+    credential = credential or any((node.get('resource-id') or '').split('/')[-1] == 'identifierId'
+                                   for node in nodes)
+    return {
+        'nodeCount': len(nodes),
+        'webViewVisible': any(node.get('class') == 'android.webkit.WebView' for node in nodes),
+        'editableFieldCount': sum('EditText' in node.get('class', '') for node in nodes),
+        'credentialLabelOrIdRecognized': credential,
+        'progressIndicatorVisible': any('ProgressBar' in node.get('class', '') for node in nodes),
+        'connectingMessageVisible': any('establishing a connection to google' in text for text in texts),
+        'justASecVisible': any(text in {'just a sec', 'just a sec…', 'just a sec...'} for text in texts),
+        'sorryVisible': 'sorry' in texts,
+        'nextButtonVisible': 'next' in texts,
+        'networkErrorVisible': any('problem communicating with google servers' in text
+                                  or 'check your network connection' in text for text in texts),
+    }
+
+
 def structural_crash_log(raw: str) -> str:
     """Retain stack structure only, never upstream request/response bodies or URLs."""
     result = []
     for line in raw.splitlines():
-        entry = re.search(r'\s(?:AndroidRuntime|GmsAuthLoginBrowser|GmsCheckin)\s*:\s*(.*)', line)
+        entry = re.search(r'\s(?:AndroidRuntime|GmsAuthLoginBrowser|GmsCheckin(?:Client|Svc|Trigger)?)\s*:\s*(.*)', line)
         if entry is None: continue
         message = entry[1]
-        if message.startswith('FATAL EXCEPTION:'):
+        if message.startswith('pageFinished:'):
+            result.append('login page-finished callback [URL omitted]')
+        elif message.startswith('shouldOverrideUrlLoading:'):
+            result.append('login navigation callback [URL omitted]')
+        elif message.startswith('-- Request --'):
+            result.append('check-in request started [request omitted]')
+        elif message == 'Checkin failed':
+            result.append('check-in failed')
+        elif message == 'JSBridge: showView':
+            result.append('login show-view callback')
+        elif message.startswith('FATAL EXCEPTION:'):
             result.append('FATAL EXCEPTION')
         elif message.startswith('Process:') and PACKAGE in message:
             result.append('Process: ' + (PACKAGE + ':microg' if PACKAGE + ':microg' in message else PACKAGE))
@@ -90,7 +122,8 @@ def main() -> None:
         deadline = time.monotonic() + 30; button = None
         while time.monotonic() < deadline:
             nodes = ui_nodes()
-            button = next((node for node in nodes if (node.get('text') or '').casefold() == 'sign in'
+            button = next((node for node in nodes if any((node.get(attribute) or '').casefold().strip() == 'sign in'
+                           for attribute in ('text', 'content-desc', 'hint'))
                            and 'Button' in node.get('class', '')), None)
             if button is not None: break
             if not adb('shell', 'pidof', PACKAGE + ':microg').stdout.strip(): break
@@ -103,15 +136,16 @@ def main() -> None:
         tap = adb('shell', 'input', 'tap', str((left + right) // 2), str((top + bottom) // 2))
         if tap.returncode: raise RuntimeError('Cannot activate sign-in entry button')
         state['signInButtonActivated'] = True
+        state['uiStates'] = []
         deadline = time.monotonic() + 75
         while time.monotonic() < deadline:
-            nodes = ui_nodes(); texts = [(node.get('text') or '').casefold() for node in nodes]
-            credential = any(text.strip() in {'email or phone', 'email address', 'enter your email', 'email'} for text in texts)
-            web = any(node.get('class') == 'android.webkit.WebView' for node in nodes)
-            if web and credential:
+            structure = login_ui_structure(ui_nodes())
+            if not state['uiStates'] or state['uiStates'][-1] != structure:
+                state['uiStates'].append(structure)
+            if structure['webViewVisible'] and structure['credentialLabelOrIdRecognized']:
                 state['googleCredentialEntryVisible'] = True
                 break
-            if any('problem communicating with google servers' in text or 'check your network connection' in text for text in texts):
+            if structure['networkErrorVisible']:
                 state['networkErrorVisible'] = True
                 break
             if not adb('shell', 'pidof', PACKAGE + ':microg').stdout.strip():

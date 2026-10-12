@@ -50,6 +50,21 @@ val embeddedGmsResourcesPatch = resourcePatch(name = "YouTube Calma experimental
         val files = input("files.txt").bufferedReader().use { it.readLines().filter(String::isNotBlank) }
         for (path in files) {
             check((path.startsWith("res/") || path.startsWith("assets/")) && !path.contains(".."))
+            if (path == "res/values/inhouse_gms_strings.xml") {
+                // Morphe allocates new values through the existing type document.
+                // A separate values file is not part of its decoded entry map.
+                val additions = input(path).use { DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(it) }
+                document("res/values/strings.xml").use { xml ->
+                    val nodes = additions.documentElement.childNodes
+                    for (i in 0 until nodes.length) if (nodes.item(i) is Element) {
+                        val item = nodes.item(i) as Element
+                        val existing = xml.getElementsByTagName("string")
+                        check((0 until existing.length).none { (existing.item(it) as Element).getAttribute("name") == item.getAttribute("name") })
+                        xml.documentElement.appendChild(xml.importNode(item, true))
+                    }
+                }
+                continue
+            }
             val target = get(path); check(!target.exists()) { "Embedded resource collision: $path" }
             target.parentFile.mkdirs()
             input(path).use { source -> target.outputStream().use { source.copyTo(it) } }
