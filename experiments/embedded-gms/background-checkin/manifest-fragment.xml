@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Inactive proposal. Merge only when explicitly enabling the background-checkin experiment.
+     Reuse existing host permission declarations; do not duplicate or lower its SDK versions. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <application>
+        <!-- BIND_JOB_SERVICE is held by Android, not requested by this application. -->
+        <service
+            android:name="inhouse.microg.bridge.CheckinJobService"
+            android:process=":inhouse_gms"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+    </application>
+</manifest>

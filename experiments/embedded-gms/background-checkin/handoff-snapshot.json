@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "inactiveProposalOnly": true,
+  "baseBackendSha256": "f2ee13b5f9645e2b988f51a0521b48045f8238d38859210307698add28a032e5",
+  "moduleSha256": "f38505f6f01e14f8d55992fa02bddc93e0f29598983927f35b9a98fe494b34bb",
+  "moduleReportPath": "/workspace/microg-embedded-research/background-mcs-proposal.report.json",
+  "runtimeDeviceTested": false,
+  "hostForegroundHookImplemented": false,
+  "upstreamSameProcessRestartRepaired": false,
+  "sourceSha256": {
+    "runtime/inhouse/microg/bridge/CheckinJobNetwork.java": "f3c4a1bf0f635c2743b5e34cf4fbf2e141c65e2554028b12f24747c46db487b9",
+    "runtime/inhouse/microg/bridge/CheckinJobScheduler.java": "b4e6d0c701ba49e06c64fdb55fec5142e95568ad40818d7b1de0e78c32f49514",
+    "runtime/inhouse/microg/bridge/CheckinJobService.java": "e7cdbdc5eb8a4f4d390d808eabff79251711595d38453f6e636c0911d215300b",
+    "runtime/inhouse/microg/bridge/ForegroundSessionPolicy.java": "6bf10c6e005da497b026f09d89e2ed29898948b97bad035fd8a80ab73c710a98",
+    "runtime/inhouse/microg/bridge/JobOwnershipPolicy.java": "277e72d794e2dd6d8a542b9f456d35a0283a156f86ad91bce92f3f44094b405d",
+    "runtime/inhouse/microg/bridge/McsSessionCoordinator.java": "2f58657fcb15839c2ce5584548b1bbf242cc420217a15ef4f57d2be61ff81287",
+    "stubs/inhouse/microg/bridge/BackendEnvironment.java": "68bb3eb651195120987ec8815980e092f8a537332f1f9286a2df54d8401efb59",
+    "stubs/org/microg/gms/auth/AuthConstants.java": "7569af42764168cdba0a6365660a37560eff55e91befeb7905d125a0752516df",
+    "stubs/org/microg/gms/checkin/CheckinManager.java": "87f41b0bbd4a34592e69771d10089d8c3f58107995192b7c23afd2f88f8b4ca8",
+    "stubs/org/microg/gms/checkin/CheckinPreferences.java": "e2681274437a57bc26d32195178beb364392ba139d2540f4b3d9b1da0f9c07c4",
+    "stubs/org/microg/gms/checkin/LastCheckinInfo.java": "a13b65803969137f8a2b13890986d28cc1bdea81205d0313fde7b17a0d286311",
+    "stubs/org/microg/gms/gcm/GcmPrefs.java": "6ef0d696dcf5a6bb65a85ffa30e889c75a5138ceec488900bb1709c35b74a12d",
+    "stubs/org/microg/gms/gcm/McsService.java": "a7cd1190b10a89396ea7ab494efc8c00fc34429b02ee4025666858f6cba3b0c9",
+    "stubs/org/microg/gms/people/PeopleManager.java": "628e1c6837b516a3a5439cce19a34ac616246c7a789bb1d2afd333045991cbe6",
+    "patches/BackgroundCheckinPatch.kt": "9f725b940d66f393d839217b6aab05e25465339a0a67054f9e0e3730919fd6cb"
+  },
+  "manifestSha256": "6f6ab1b311ac565deb119a26e04e7f09793b3f33e7e87be08e614b74ec92319e",
+  "excludedFromBuild": [
+    "design/lifecycle-draft/",
+    "stubs/ (compile-only)"
+  ]
+}
