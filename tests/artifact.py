@@ -19,6 +19,8 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
         if re.fullmatch('classes[0-9]*.dex',n):old.update(compiler.dex_classes(base.read(n)))
     assert old<=classes,'Original classes lost'
     assert 'Les/calma/youtube/nativeapp/CalmaBootstrap;' in classes
+    for name in ('InstallActivity', 'InstallState', 'InstallResultPolicy'):
+        assert f'Lcom/inhouse/services/updater/{name};' in classes, f'Missing installer result component: {name}'
     assert b'CalmaBuild' in strings and m['version'].encode() in strings
     for n in ['updater.js','index.html','updater.css','host.js','host.css','config.json']:assert z.read('assets/updates/'+n)==(R/'app/assets/updates'/n).read_bytes()
     assert z.read('assets/calma-preferences.json')==(R/'resources/assets/calma-preferences.json').read_bytes()
@@ -30,9 +32,15 @@ with zipfile.ZipFile(apk) as z,zipfile.ZipFile(R/'base/youtube-original.apk') as
         assert preset[stored]==expected,k
 photos=(R/'vendor/inhouse-photos/UpdateInstaller.kt').read_text();adapted=(R/'vendor/inhouse-services-updater/android/PhotosUpdateInstaller.kt').read_text()
 assert photos[photos.index('  private fun download('):photos.index('  private fun publishDownloadProgress(')] in adapted
-assert photos[photos.index('  private fun validateUrl('):] in adapted
-install=photos[photos.index('  private fun installUpdate('):photos.index('  private fun download(')].replace('private fun installUpdate(', 'fun installUpdate(').replace('MethodChannel.Result','Result')
-assert install in adapted
+# Verification is unchanged; the verified PackageInfo is now returned so the
+# result Activity can compare the installed version with that exact package.
+verification=adapted.replace('private fun verifyApk(apkFile: File, expectedSha256: String?): PackageInfo {',
+    'private fun verifyApk(apkFile: File, expectedSha256: String?) {').replace('    return archive\n  }', '  }')
+assert photos[photos.index('  private fun validateUrl('):] in verification
+assert 'setClassName(activity.packageName, "com.inhouse.services.updater.InstallActivity")' in adapted
+assert 'putExtra("versionCode", getVersionCode(verifiedPackage))' in adapted
+patch=(R/'patches/YouTubeCalma.kt').read_text()
+assert '"name" to "com.inhouse.services.updater.InstallActivity", "exported" to "false"' in patch
 subprocess.run(['python3',str(R/'vendor/inhouse-services-updater/verify.py'),str(R)],check=True)
 source=(R/'src/es/calma/youtube/nativeapp/CalmaBuild.java').read_text()
 assert re.search(r'VERSION = "([^"]+)"',source)[1]==m['version']
