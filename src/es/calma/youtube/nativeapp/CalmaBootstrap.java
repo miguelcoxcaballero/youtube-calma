@@ -70,6 +70,29 @@ public final class CalmaBootstrap {
                     .putString("revanced_check_environment_warnings_issued", "2147483647")
                     .putBoolean("calma_distribution_v3", true).commit()) return;
             }
+            // The supplied preset made 1.15x the default playback speed. The default
+            // is 1.0x again: move the Inhouse profile off the old preset value once,
+            // keeping any other speed the user chose. With Inhouse off, the live
+            // preferences are the original APK's profile, so only the saved Inhouse
+            // profile is corrected.
+            if (!preferences.getBoolean("calma_speed_v4", false)) {
+                SharedPreferences.Editor edit = preferences.edit();
+                try {
+                    if (CalmaSwitch.enabled()) {
+                        if ("1.15".equals(preferences.getString("revanced_playback_speed_default", null)))
+                            edit.putString("revanced_playback_speed_default", "1.0");
+                    } else {
+                        JSONObject active = new JSONObject(preferences.getString("inhouse_active_profile", "{}"));
+                        if ("1.15".equals(active.optString("revanced_playback_speed_default", null))) {
+                            active.put("revanced_playback_speed_default", "1.0");
+                            edit.putString("inhouse_active_profile", active.toString());
+                        }
+                    }
+                } catch (Exception error) {
+                    Log.e("Calma", "Could not check the default playback speed", error);
+                }
+                if (!edit.putBoolean("calma_speed_v4", true).commit()) return;
+            }
             seeded = true;
         }
         Context app = context.getApplicationContext();

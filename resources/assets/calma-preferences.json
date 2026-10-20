@@ -26,7 +26,7 @@
   "revanced_hide_shorts_video_description": true,
   "revanced_miniplayer_hide_rewind_forward": false,
   "revanced_miniplayer_width_dip": "175",
-  "revanced_playback_speed_default": "1.15",
+  "revanced_playback_speed_default": "1.0",
   "revanced_seekbar_custom_color_accent": "#FF0000",
   "revanced_seekbar_custom_color_primary": "#FF0000",
   "revanced_shorts_disable_background_playback": true,
