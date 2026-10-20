@@ -2,9 +2,7 @@
 
 Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20.40.45 (1557278144). Conserva el cliente nativo, sus reproductores y sus ajustes. No usa un cliente web.
 
-[Descargar APK 0.1.11 · B](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.11/YouTube-Calma-0.1.11.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.11)
-
-[Descargar APK 0.1.12 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.12/YouTube-Calma-0.1.12.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.12)
+[Descargar APK 0.1.14 · B y A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.14/YouTube-Calma-0.1.14.apk) · [Release y suma SHA-256](https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.14)
 
 - Sin pestaña Inicio. La app abre directamente Suscripciones.
 - Debajo del vídeo se conservan descripción y comentarios; se retiran las filas de vídeos recomendados antes de distribuir el contenido.
@@ -14,9 +12,31 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 - Inhouse YouTube settings aparece debajo de ReVanced con su icono y la misma plantilla nativa de fila, incluida la reserva de espacio para iconos.
 - **Inhouse services updater** comprueba al abrir la app. En **Inhouse YouTube settings → Actualizaciones · A/B** puedes elegir canal y comprobar manualmente.
 
+## microG integrado y aviso antes de actualizar (0.1.14 · B)
+
+Publicada en B por petición expresa tras confirmar el usuario que puede iniciar sesión. También llega a A. Conserva la integración de microG de la 0.1.13 y requiere Android 14 o posterior. Al actualizar desde una versión con microG externo hay que iniciar sesión de nuevo.
+
+El popup muestra este aviso antes del botón **Update**, también en los clientes ya instalados:
+
+> Android 14+. Built-in microG: sign in again after updating. If sign-in fails, wait 30 minutes and retry.
+
+Verificada la APK firmada sobre la instalación 0.1.5 en Android 14, 15 y 16: código estrictamente mayor, identidad de instalación conservada y arranque sin microG externo ([informe](validation/0.1.14.json), [ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38305286531)).
+
+Verificado el aviso en modo claro y oscuro, en la comprobación manual y automática del actualizador de la 0.1.11: visible sin abrir Details y sin descarga automática ([informe](validation/updater-notice-0.1.14.json)). Los fuentes de la APK están en el [tag v0.1.14](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.14); utiliza su compilador `experiments/embedded-gms/build-youtube.py`. `main` conserva los fuentes del compilador anterior y aloja los catálogos.
+
+## microG integrado (0.1.13 · A experimental)
+
+Incluye microG dentro de la APK: no requiere instalar una aplicación microG aparte. Requiere **Android 14 o posterior** y volver a iniciar sesión en Google. Se publicó inicialmente por el canal A; conserva el paquete, la firma y el actualizador compartido.
+
+La APK firmada final superó la actualización sobre 0.1.5 y el arranque sin microG externo en Android 14, 15 y 16, conservando la identidad de la instalación ([informe](validation/0.1.13.json), [ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38271314852)).
+
+La integración superó 39 comprobaciones por versión y llegó a la entrada de credenciales de Google en Android 14, 15 y 16 ([resultados](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38264289394)). El usuario confirmó después que puede iniciar sesión en su Galaxy S24 Ultra. Las pruebas automáticas no cubren sesiones autenticadas, reproducción, renovación de sesión ni notificaciones.
+
+El código de esta APK está en el [tag v0.1.13](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.13), con el compilador `experiments/embedded-gms/build-youtube.py`. Los fuentes de `main` conservan el compilador anterior con microG externo; los catálogos de actualización sí se publican en `main`. Para continuar esta integración, usa los fuentes del tag y consulta [AGENTS.md](AGENTS.md).
+
 ## Colores del actualizador (0.1.12 · A)
 
-El popup usa grises neutros en modo claro y oscuro, sin el tono anaranjado de la paleta anterior. Sincroniza Inhouse services updater 1.2.1 desde su repositorio compartido. B continúa en la 0.1.11.
+El popup usa grises neutros en modo claro y oscuro, sin el tono anaranjado de la paleta anterior. Sincroniza Inhouse services updater 1.2.1 desde su repositorio compartido.
 
 Verificada la APK pública, su firma y los recursos del actualizador. Supera las pruebas del popup y 247 comprobaciones nativas por API en Android 14, 15 y 16, incluida la actualización sobre 0.1.5 y la apertura del instalador. [Resultados](validation/0.1.12.json) · [Ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38178482369).
 
@@ -70,7 +90,7 @@ También se omite el aviso de la base que esperaba una instalación recién parc
 
 ## Instalación
 
-La APK requiere Android 9 o posterior y ReVanced GmsCore, como el archivo original. Conserva las cuatro arquitecturas incluidas en la base.
+La 0.1.14 B y A, y la 0.1.13 A anterior, requieren Android 14 o posterior e incluyen microG. La 0.1.11 B y las anteriores requieren Android 9 o posterior y ReVanced GmsCore externo, como el archivo original. Se conservan las cuatro arquitecturas incluidas en la base.
 
 Conserva el paquete `app.revanced.android.youtube`, pero está firmada con la clave de Calma. **No puede instalarse encima de la APK original con otra firma**. Si tienes esa ReVanced instalada, exporta los ajustes y conserva tus descargas antes de desinstalarla e instalar esta. El YouTube oficial utiliza otro paquete y puede permanecer instalado. Las siguientes versiones de Calma se podrán actualizar normalmente.
 
@@ -85,13 +105,15 @@ La 0.1.6 supera las comprobaciones del actualizador compartido y las pruebas nat
 
 Los cambios propios están en [patches/YouTubeCalma.kt](patches/YouTubeCalma.kt) y [src](src). No se aplica ningún paquete adicional de parches de terceros; se conectan las funciones que ya contiene el APK facilitado. [base.lock.json](base.lock.json) fija archivo, versión, tamaño, firma y SHA-256.
 
-El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo; el actualizador usa `0.1.12` y Android `versionCode=1557278157`.
+El build valida la entrada, compila la extensión aislando sus dependencias, aplica los cambios, alinea y firma. El cliente mantiene `versionName=20.40.45` para su protocolo. La 0.1.14 usa `versionCode=1557278159`; sus fuentes están en el tag enlazado arriba. Los fuentes anteriores de `main` conservan la identidad 0.1.12/1557278157.
 
 La 0.1.5 ha superado 181 comprobaciones por versión y dos fases adicionales de cambio de perfil entre procesos en emuladores Android 14, 15 y 16. Incluyen los modelos nativos de Notificaciones, su posición, deduplicación y ruta al buzón; el clic real del logo hacia la web; iconos, ajustes, perfiles y apertura del instalador hasta su confirmación. [Resultados y alcance](validation/0.1.5.json) · [Ejecución Android](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38141579965). La confirmación de instalación se cancela en las pruebas.
 
 También se comprueban integridad de la APK, preset, bibliotecas nativas, procedencia del instalador, popup/progreso y recuperación de actualizaciones. La instrumentación Android comprueba los valores cargados por ReVanced, callbacks de navegación, filtros y conservación de estadísticas. Las pruebas sin iniciar sesión no verifican las suscripciones de una cuenta real ni la reproducción autenticada.
 
 ## Compilación
+
+Estos comandos corresponden al compilador anterior con microG externo. Para la 0.1.14, usa el tag y el compilador de microG integrado indicados arriba.
 
 Requiere Java 17+, Python 3, SDK Android (plataforma 35 y build-tools 36), ECJ, Kotlin 2.0.21 y AndroidX Core. La APK base y las claves privadas no se incluyen en Git.
 

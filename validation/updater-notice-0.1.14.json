@@ -1,0 +1,117 @@
+{
+  "updaterSource": "git tag v0.1.11, all original web assets",
+  "updaterJsSha256": "ed990592bf0eab1d75949f5b9affa3e4d4428facdeca6f091f0749c97dfbc6a2",
+  "notice": "Android 14+. Built-in microG: sign in again after updating. If sign-in fails, wait 30 minutes and retry.",
+  "noticeLength": 104,
+  "catalogIsFixture": true,
+  "cases": [
+    {
+      "theme": "light",
+      "flow": "manual",
+      "noticeVisibleBeforeClick": true,
+      "detailsClosed": true,
+      "automaticDownload": false,
+      "explicitClickInvokesInstallOnce": true,
+      "geometry": {
+        "note": {
+          "x": 24,
+          "y": 608,
+          "width": 342,
+          "height": 60
+        },
+        "button": {
+          "x": 269.140625,
+          "y": 744,
+          "width": 96.859375,
+          "height": 40
+        },
+        "noteBeforeButton": true,
+        "noteInViewport": true,
+        "buttonInViewport": true,
+        "noteUncovered": true,
+        "noHorizontalOverflow": true
+      }
+    },
+    {
+      "theme": "light",
+      "flow": "automatic_pending",
+      "noticeVisibleBeforeClick": true,
+      "detailsClosed": true,
+      "automaticDownload": false,
+      "explicitClickInvokesInstallOnce": true,
+      "geometry": {
+        "note": {
+          "x": 24,
+          "y": 608,
+          "width": 342,
+          "height": 60
+        },
+        "button": {
+          "x": 269.140625,
+          "y": 744,
+          "width": 96.859375,
+          "height": 40
+        },
+        "noteBeforeButton": true,
+        "noteInViewport": true,
+        "buttonInViewport": true,
+        "noteUncovered": true,
+        "noHorizontalOverflow": true
+      }
+    },
+    {
+      "theme": "dark",
+      "flow": "manual",
+      "noticeVisibleBeforeClick": true,
+      "detailsClosed": true,
+      "automaticDownload": false,
+      "explicitClickInvokesInstallOnce": true,
+      "geometry": {
+        "note": {
+          "x": 24,
+          "y": 608,
+          "width": 342,
+          "height": 60
+        },
+        "button": {
+          "x": 269.140625,
+          "y": 744,
+          "width": 96.859375,
+          "height": 40
+        },
+        "noteBeforeButton": true,
+        "noteInViewport": true,
+        "buttonInViewport": true,
+        "noteUncovered": true,
+        "noHorizontalOverflow": true
+      }
+    },
+    {
+      "theme": "dark",
+      "flow": "automatic_pending",
+      "noticeVisibleBeforeClick": true,
+      "detailsClosed": true,
+      "automaticDownload": false,
+      "explicitClickInvokesInstallOnce": true,
+      "geometry": {
+        "note": {
+          "x": 24,
+          "y": 608,
+          "width": 342,
+          "height": 60
+        },
+        "button": {
+          "x": 269.140625,
+          "y": 744,
+          "width": 96.859375,
+          "height": 40
+        },
+        "noteBeforeButton": true,
+        "noteInViewport": true,
+        "buttonInViewport": true,
+        "noteUncovered": true,
+        "noHorizontalOverflow": true
+      }
+    }
+  ]
+}
