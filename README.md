@@ -70,7 +70,7 @@ Pulsar el logo en los ajustes abre [Inhouse Software](https://inhouse.miguelcoxc
 
 ## Iconos Inhouse (0.1.4)
 
-El play blanco del icono de YouTube se sustituye por el símbolo blanco de Inhouse, editado con IA. Los logos interiores, incluido el del popup, usan blanco sobre negro. Se conserva el icono nuevo al activar o desactivar las funciones Inhouse. [Recursos y adaptación al launcher](BRANDING.md).
+El tejado blanco de Inhouse sustituye al triángulo de play del icono de YouTube, sobre fondo blanco. El pie de ajustes usa el mismo icono. Se conserva el icono nuevo al activar o desactivar las funciones Inhouse. [Recursos y adaptación al launcher](BRANDING.md).
 
 ## Ajustes Inhouse (0.1.3)
 
@@ -78,7 +78,7 @@ En los ajustes nativos, justo debajo de ReVanced, aparece **Inhouse YouTube sett
 
 Se guardan por separado las preferencias con Inhouse activado y desactivado. Al actualizar desde versiones que no guardaban la configuración anterior a Calma, la primera desactivación utiliza los valores originales del APK ReVanced proporcionado. No se cambian la cuenta, las estadísticas acumuladas ni la identidad de la aplicación.
 
-El pie muestra una variante blanca sobre negro del [símbolo de Inhouse Read](https://github.com/miguelcoxcaballero/inhouse-read/blob/main/public/icons/inhouse-read-logo.png), versión, fecha de publicación y enlace a este repositorio.
+El pie muestra el icono de la app, versión, fecha de publicación y enlace a este repositorio.
 
 ## Actualizador corregido en 0.1.2
 
