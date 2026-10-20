@@ -234,7 +234,7 @@ public final class NativeSmoke extends Instrumentation {
         android.graphics.Bitmap logo;
         try(java.io.InputStream input=context.getAssets().open("inhouse-logo.png")){logo=android.graphics.BitmapFactory.decodeStream(input);}
         check(logo!=null,"Interior logo decodes");
-        int corner=logo.getPixel(0,0);check(android.graphics.Color.red(corner)<12 && android.graphics.Color.green(corner)<12 && android.graphics.Color.blue(corner)<12,"Interior Inhouse logo has a black background");logo.recycle();
+        int corner=logo.getPixel(0,0),centre=logo.getPixel(logo.getWidth()/2,logo.getHeight()/2);check(android.graphics.Color.red(corner)>240 && android.graphics.Color.green(corner)>240 && android.graphics.Color.blue(corner)>240 && android.graphics.Color.red(centre)>230 && android.graphics.Color.green(centre)<40 && android.graphics.Color.blue(centre)<40,"Interior Inhouse logo is the app icon: red play on white");logo.recycle();
         return android.util.Base64.encodeToString(output.toByteArray(),android.util.Base64.NO_WRAP);
     }
     @Override public void onStart() {

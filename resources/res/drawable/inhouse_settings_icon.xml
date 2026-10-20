@@ -1,4 +1,4 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
     <!-- Native preferences tint the entire alpha mask; an opaque brand tile hides the symbol. -->
-    <path android:fillColor="@android:color/transparent" android:strokeColor="?android:attr/textColorPrimary" android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M6.5,14.5 L12,9 L17.5,14.5" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="?android:attr/textColorPrimary" android:strokeWidth="3.4" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M6,15 L12,9 L18,15" />
 </vector>
