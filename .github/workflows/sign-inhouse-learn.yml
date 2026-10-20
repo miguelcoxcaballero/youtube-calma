@@ -1,0 +1,186 @@
+name: Sign Inhouse Learn
+# The permanent Inhouse signing key exists only as the repository secret
+# EJEMPLO here and in ig-calma; GitHub never lets a secret be read back or
+# copied, so inhouselearn cannot sign its own APK. This workflow builds Inhouse
+# Learn from the exact inhouselearn commit given, signs it with EJEMPLO,
+# verifies the signer, and stages the result as a public prerelease of THIS
+# repository (tag learn-signed-<version>-<short sha>). inhouselearn's own
+# "Android app" workflow (run with "publish") downloads that staged APK, checks
+# it again, opens it on an emulator and publishes it as inhouselearn's release
+# android-v<version>. Nothing here touches YouTube Calma itself.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: inhouselearn commit to build and sign (the full 40-character SHA of its main)
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sign-inhouse-learn
+  cancel-in-progress: false
+
+env:
+  # Certificate of the permanent Inhouse key (YouTube, Instagram and Learn).
+  INHOUSE_SIGNER_SHA256: 7133a4b3e4b9f9c4d2fbbd38b7dd2d44c7b8d0d7d16568bfe3da74a09e7887b6
+  LEARN_REPO: miguelcoxcaballero/inhouselearn
+  LEARN_SHA: ${{ inputs.ref }}
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check the requested commit
+        run: |
+          [[ "$LEARN_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::ref must be the full 40-character SHA of an inhouselearn commit"; exit 1; }
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: miguelcoxcaballero/inhouselearn
+          ref: ${{ inputs.ref }}
+          path: learn
+          persist-credentials: false
+      - name: Confirm the checkout is that commit
+        working-directory: learn
+        run: |
+          [ "$(git rev-parse HEAD)" = "$LEARN_SHA" ]
+          git log -1 --format='%H %s'
+      - name: Select Java 17
+        run: |
+          test -d "$JAVA_HOME_17_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_17_X64" >> "$GITHUB_PATH"
+      - name: Check the shared updater copies (frozen installer included)
+        run: python3 learn/vendor/inhouse-services-updater/verify.py learn
+      - name: Read the version
+        id: version
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          gradle = Path('learn/android/app/build.gradle.kts').read_text()
+          version = re.search(r'versionName = "([0-9]+\.[0-9]+\.[0-9]+)"', gradle)[1]
+          code = int(re.search(r'versionCode = ([0-9]+)', gradle)[1])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write(f'version={version}\ncode={code}\ntag=learn-signed-{version}-{os.environ["LEARN_SHA"][:7]}\n')
+          print('Inhouse Learn', version, code)
+          PY
+      - name: Build the minified release
+        working-directory: learn/android
+        run: ./gradlew --no-daemon assembleRelease
+      - name: Prepare the permanent Inhouse key from secret EJEMPLO
+        env:
+          KEYSTORE_SECRET: ${{ secrets.EJEMPLO }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, os, re, subprocess, sys
+          from pathlib import Path
+          def fail(message):
+              print('::error::' + message)
+              sys.exit(1)
+          expected = os.environ['INHOUSE_SIGNER_SHA256']
+          temp = Path(os.environ['RUNNER_TEMP'])
+          text = os.environ.get('KEYSTORE_SECRET', '')
+          # Plain or line-wrapped base64 of the keystore file; armour lines are ignored.
+          body = ''.join(line.strip() for line in text.splitlines() if not line.strip().startswith('-----'))
+          if not body:
+              fail('Repository secret EJEMPLO is missing or empty')
+          try:
+              raw = base64.b64decode(body, validate=True)
+          except ValueError:
+              fail('Secret EJEMPLO must hold the signing keystore (.p12/.jks) as base64 text')
+          source = temp / 'inhouse-source.keystore'
+          source.touch(mode=0o600)
+          source.write_bytes(raw)
+          env = dict(os.environ, KS_PASS='localbuild')
+          def keytool(*args, check=False, text=True):
+              return subprocess.run(['keytool', '-J-Duser.language=en', *map(str, args)], env=env,
+                                    capture_output=True, text=text, check=check)
+          listing = keytool('-list', '-v', '-keystore', source, '-storepass:env', 'KS_PASS')
+          if listing.returncode:
+              fail("keytool could not open the keystore in EJEMPLO with the build password 'localbuild'")
+          match = None
+          for alias in re.findall(r'^Alias name: (.+)$', listing.stdout, re.M):
+              certificate = keytool('-exportcert', '-keystore', source, '-storepass:env', 'KS_PASS', '-alias', alias, text=False)
+              if certificate.returncode == 0 and hashlib.sha256(certificate.stdout).hexdigest() == expected:
+                  match = alias
+                  break
+          if match is None:
+              fail(f'No entry in EJEMPLO has the permanent Inhouse certificate {expected}')
+          # Normalise to one PKCS#12 entry "inhouse" for apksigner.
+          target = temp / 'inhouse.p12'
+          target.unlink(missing_ok=True)
+          keytool('-importkeystore', '-noprompt', '-srckeystore', source, '-srcstorepass:env', 'KS_PASS', '-srcalias', match,
+                  '-destkeystore', target, '-deststoretype', 'PKCS12', '-destalias', 'inhouse',
+                  '-deststorepass:env', 'KS_PASS', '-destkeypass:env', 'KS_PASS', check=True)
+          source.unlink()
+          print('Permanent Inhouse key ready; certificate SHA-256', expected)
+          PY
+      - name: Sign and verify package, version and signer
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          mkdir -p dist
+          "$tools/zipalign" -p -f 4 learn/android/app/build/outputs/apk/release/app-release-unsigned.apk aligned.apk
+          KS_PASS=localbuild "$tools/apksigner" sign --ks "$RUNNER_TEMP/inhouse.p12" --ks-key-alias inhouse \
+            --ks-pass env:KS_PASS --key-pass env:KS_PASS --out "dist/inhouse-learn-$VERSION.apk" aligned.apk
+          apk="dist/inhouse-learn-$VERSION.apk"
+          "$tools/apksigner" verify --print-certs "$apk" | tee signers.txt
+          "$tools/aapt2" dump badging "$apk" | head -1 | tee badging.txt
+          grep -q "package: name='com.inhouse.learn' versionCode='$CODE' versionName='$VERSION'" badging.txt
+          signers=$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' signers.txt | awk '{print $4}' | sort -u)
+          if [ "$signers" != "$INHOUSE_SIGNER_SHA256" ]; then
+            echo "::error::The APK is not signed only by the permanent Inhouse key"; exit 1
+          fi
+          sha=$(sha256sum "$apk" | cut -d' ' -f1)
+          size=$(stat -c %s "$apk")
+          printf '%s  %s\n' "$sha" "inhouse-learn-$VERSION.apk" > dist/SHA256SUMS.txt
+          python3 - "$sha" "$size" <<'PY'
+          import json, os, sys
+          info = {
+              'source': os.environ['LEARN_REPO'], 'sha': os.environ['LEARN_SHA'],
+              'version': os.environ['VERSION'], 'versionCode': int(os.environ['CODE']),
+              'apkSha256': sys.argv[1], 'apkSizeBytes': int(sys.argv[2]),
+              'signerSha256': os.environ['INHOUSE_SIGNER_SHA256'],
+              'signedIn': os.environ['GITHUB_REPOSITORY'],
+              'signingRun': f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          open('dist/build-info.json', 'w').write(json.dumps(info, indent=2) + '\n')
+          print(json.dumps(info))
+          PY
+      - name: Delete the key from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/inhouse.p12" "$RUNNER_TEMP/inhouse-source.keystore"
+      - name: Stage the signed APK as a public prerelease of this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # Only the newest staging copy is kept; published Learn releases live in inhouselearn.
+          for old in $(gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^learn-signed-' || true); do
+            [ "$old" = "$TAG" ] && continue
+            gh release delete "$old" --yes --cleanup-tag || true
+          done
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Staging release $TAG already exists"; exit 1
+          fi
+          printf 'Inhouse Learn %s built from %s@%s and signed with the permanent Inhouse key (certificate SHA-256 %s).\n\nStaging copy for inhouselearn'"'"'s "Android app" workflow; the published release is android-v%s in that repository.\n' \
+            "$VERSION" "$LEARN_REPO" "$LEARN_SHA" "$INHOUSE_SIGNER_SHA256" "$VERSION" > notes.txt
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Inhouse Learn $VERSION · signed (staging for inhouselearn)" \
+            --notes-file notes.txt --prerelease --latest=false \
+            "dist/inhouse-learn-$VERSION.apk" dist/SHA256SUMS.txt dist/build-info.json
+          echo "Staged: https://github.com/$GH_REPO/releases/tag/$TAG"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: inhouse-learn-signed
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

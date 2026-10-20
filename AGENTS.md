@@ -13,6 +13,10 @@ The 0.1.14 catalog changelog is also the pre-update notice shown by existing cli
 
 `CalmaBuild.java` is the sole release version/code source. The patch compiler generates its constants; never put an independent release code in `YouTubeCalma.kt`. Before advertising an update, decode the SIGNED APK and verify its Android versionCode and `es.calma.version` metadata against the catalog. `adb install -r` can accept the same code and is insufficient: require a strictly greater actual code than the previous APK. Run `tests/artifact.py` and the Android upgrade-from-0.1.5 check. Keep the shared installer's strict version, hash, package and signature checks unchanged.
 
+## Signing Inhouse Learn here
+
+The permanent Inhouse signing key (certificate SHA-256 `7133a4b3e4b9f9c4d2fbbd38b7dd2d44c7b8d0d7d16568bfe3da74a09e7887b6`) exists only as the secret `EJEMPLO` of this repository and of `ig-calma`. GitHub cannot copy a secret, so `inhouselearn` has none: `.github/workflows/sign-inhouse-learn.yml` builds the inhouselearn commit given as `ref`, signs it with `EJEMPLO`, verifies the signer and stages it as the public prerelease `learn-signed-<version>-<short sha>` of this repository (only the newest is kept). inhouselearn's own "Android app" workflow then verifies and publishes it as `android-v<version>` there. Never move the key anywhere else, never sign anything but an inhouselearn commit with that workflow, and keep the YouTube release workflows untouched by it.
+
 # Inhouse services updater — mandatory shared updater policy
 
 Canonical repository: https://github.com/miguelcoxcaballero/inhouse-services-updater
