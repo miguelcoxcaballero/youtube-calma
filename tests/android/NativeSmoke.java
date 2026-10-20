@@ -166,7 +166,7 @@ public final class NativeSmoke extends Instrumentation {
             // A second complete cycle must not replace the saved enabled profile.
             call(name,"setEnabled",new Class[]{boolean.class},false);call(name,"setEnabled",new Class[]{boolean.class},true);
             check("1.25".equals(prefs.getString("revanced_playback_speed_default","")),"repeat switching preserves profile");
-            prefs.edit().putString("revanced_playback_speed_default","1.15").putString("sb_local_time_saved_number_segments","3816").remove("unrelated_inhouse_test").commit();
+            prefs.edit().putString("revanced_playback_speed_default","1.0").putString("sb_local_time_saved_number_segments","3816").remove("unrelated_inhouse_test").commit();
         }
         result.putString("stream","CALMA_PROFILE_OK "+phase+" checks="+checks+"\n");finish(-1,result);
     }
