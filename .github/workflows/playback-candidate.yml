@@ -1,0 +1,206 @@
+name: Playback candidate (no publication)
+on:
+  push:
+    branches: [fix/playback-stream-recovery]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Select Java 21 for the pinned APK patcher
+        run: |
+          test -d "$JAVA_HOME_21_X64"
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_21_X64" >> "$GITHUB_PATH"
+      - name: Prepare the permanent Calma key from secret EJEMPLO
+        env:
+          KEYSTORE_SECRET: ${{ secrets.EJEMPLO }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, os, re, subprocess, sys
+          from pathlib import Path
+          def fail(message):
+              print('::error::' + message)
+              sys.exit(1)
+          EXPECTED = re.search(r"SIGNER_SHA256 = '([0-9a-f]{64})'",
+                               Path('experiments/embedded-gms/build-youtube.py').read_text())[1]
+          temp = Path(os.environ['RUNNER_TEMP'])
+          text = os.environ.get('KEYSTORE_SECRET', '')
+          # Plain or line-wrapped base64 of the keystore file; armour lines are ignored.
+          body = ''.join(line.strip() for line in text.splitlines() if not line.strip().startswith('-----'))
+          if not body:
+              fail('Repository secret EJEMPLO is missing or empty')
+          try:
+              raw = base64.b64decode(body, validate=True)
+          except ValueError:
+              fail('Secret EJEMPLO must hold the signing keystore (.p12/.jks) as base64 text')
+          source = temp / 'calma-source.keystore'
+          source.touch(mode=0o600)
+          source.write_bytes(raw)
+          env = dict(os.environ, KS_PASS=os.environ.get('CALMA_KEYSTORE_PASSWORD') or 'localbuild')
+          def keytool(*args, check=False, text=True):
+              return subprocess.run(['keytool', '-J-Duser.language=en', *map(str, args)], env=env,
+                                    capture_output=True, text=text, check=check)
+          listing = keytool('-list', '-v', '-keystore', source, '-storepass:env', 'KS_PASS')
+          if listing.returncode:
+              fail("keytool could not open the keystore in EJEMPLO with the build password 'localbuild'")
+          aliases = re.findall(r'^Alias name: (.+)$', listing.stdout, re.M)
+          match = None
+          for alias in aliases:
+              certificate = keytool('-exportcert', '-keystore', source, '-storepass:env', 'KS_PASS', '-alias', alias, text=False)
+              if certificate.returncode == 0 and hashlib.sha256(certificate.stdout).hexdigest() == EXPECTED:
+                  match = alias
+                  break
+          if match is None:
+              fail(f'None of the {len(aliases)} entries in EJEMPLO has the permanent Calma certificate {EXPECTED}')
+          # build-youtube.py signs with alias "calma"; normalise to that PKCS#12 entry.
+          target = temp / 'calma.p12'
+          target.unlink(missing_ok=True)
+          keytool('-importkeystore', '-noprompt', '-srckeystore', source, '-srcstorepass:env', 'KS_PASS', '-srcalias', match,
+                  '-destkeystore', target, '-deststoretype', 'PKCS12', '-destalias', 'calma',
+                  '-deststorepass:env', 'KS_PASS', '-destkeypass:env', 'KS_PASS', check=True)
+          source.unlink()
+          certificate = keytool('-exportcert', '-keystore', target, '-storepass:env', 'KS_PASS', '-alias', 'calma',
+                                check=True, text=False)
+          assert hashlib.sha256(certificate.stdout).hexdigest() == EXPECTED
+          print('Permanent Calma key ready; certificate SHA-256', EXPECTED)
+          PY
+      - name: Refuse to replace an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(python3 -c "import sys; sys.path.insert(0, 'scripts'); from release_metadata import release_version; print(release_version()[0])")
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "::error::Release v$version already exists; bump CalmaBuild.java instead of replacing it"
+            exit 1
+          fi
+      - name: Prepare platform and existing build tools
+        run: |
+          "${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;36.0.0"
+          python3 scripts/setup-tools.py --android-sdk "${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+      - name: Fetch exact public inputs and verify hashes
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, urllib.parse, urllib.request
+          from pathlib import Path
+          root = Path.cwd()
+          base = json.loads((root / 'base.lock.json').read_text())
+          upstream = json.loads((root / 'experiments/embedded-gms/upstream.lock.json').read_text())
+          file_id = urllib.parse.urlparse(base['sourceUrl']).path.split('/d/', 1)[1].split('/', 1)[0]
+          drive_url = 'https://drive.usercontent.google.com/download?' + urllib.parse.urlencode({
+              'id': file_id, 'export': 'download', 'confirm': 't'})
+          inputs = [(drive_url, root / 'base/youtube-original.apk', base['sha256']),
+                    (upstream['apkUrl'], root / 'build/embedded-youtube-input/gmscore.apk', upstream['apkSha256'])]
+          for url, destination, expected in inputs:
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              temporary = destination.with_suffix('.partial')
+              try:
+                  digest = hashlib.sha256()
+                  with urllib.request.urlopen(url, timeout=120) as response, temporary.open('wb') as output:
+                      while chunk := response.read(1024 * 1024):
+                          digest.update(chunk)
+                          output.write(chunk)
+                  if digest.hexdigest() != expected:
+                      raise RuntimeError('Pinned input hash mismatch: ' + destination.name)
+                  temporary.replace(destination)
+              finally:
+                  temporary.unlink(missing_ok=True)
+          PY
+      - name: Build and sign with the permanent key (no instrumentation)
+        run: |
+          python3 experiments/embedded-gms/build-youtube.py \
+            --gms-apk build/embedded-youtube-input/gmscore.apk \
+            --morphe tools/morphe.jar \
+            --keystore "$RUNNER_TEMP/calma.p12"
+      - name: Delete the key from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/calma.p12" "$RUNNER_TEMP/calma-source.keystore"
+      - name: Stage release files and the update manifest
+        env:
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, re, shutil, subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, 'scripts')
+          from release_metadata import release_version, verify_apk
+          version, code = release_version()
+          signer = re.search(r"SIGNER_SHA256 = '([0-9a-f]{64})'",
+                             Path('experiments/embedded-gms/build-youtube.py').read_text())[1]
+          output = Path('build/embedded-youtube')
+          report = json.loads((output / 'build-report.json').read_text())
+          if report['debugSigning'] or report['instrumentationIncluded'] or report.get('prepareOnly'):
+              raise RuntimeError('A release needs the permanent key and no test instrumentation')
+          if (report['version'], report['versionCode'], report['signerSha256']) != (version, code, signer):
+              raise RuntimeError('Build report differs from CalmaBuild.java or the permanent signer')
+          source = output / report['apk']
+          with source.open('rb') as stream:
+              if hashlib.file_digest(stream, 'sha256').hexdigest() != report['apkSha256']:
+                  raise RuntimeError('APK differs from its build report')
+          tools = Path('tools/android-15')
+          certificates = subprocess.check_output([str(tools / 'apksigner'), 'verify', '--print-certs', str(source)], text=True)
+          if re.findall(r'Signer #\d+ certificate SHA-256 digest: ([0-9a-f]+)', certificates) != [signer]:
+              raise RuntimeError('APK is not signed only by the permanent Calma key')
+          verify_apk(source, tools, version, code)
+          name = f'YouTube-Calma-{version}.apk'
+          dist = Path('build/dist')
+          dist.mkdir(parents=True, exist_ok=True)
+          shutil.copyfile(source, dist / name)
+          manifest = {
+              'version': version, 'versionCode': code, 'required': True,
+              'apkUrl': f"https://github.com/{os.environ['GH_REPO']}/releases/download/v{version}/{name}",
+              'apkSha256': report['apkSha256'], 'apkSizeBytes': report['apkSizeBytes'],
+              'releaseNotes': 'Validate playback stream responses.',
+          }
+          Path('android-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          shutil.copyfile('android-update.json', dist / 'android-update.json')
+          shutil.copyfile(output / 'build-report.json', dist / 'build-info.json')
+          (dist / 'SHA256SUMS.txt').write_text(report['apkSha256'] + '  ' + name + '\n')
+          (dist / 'release-notes.txt').write_text(manifest['releaseNotes'] + '\n')
+          print('Signed', name, report['apkSha256'], report['apkSizeBytes'])
+          PY
+      - name: Check preset, updater assets, original classes and manifest boundaries
+        run: |
+          python3 tests/artifact.py
+          python3 -m unittest discover -s tests -p 'test_embedded*.py' -v
+          python3 scripts/test-embedded-inheritance.py --morphe tools/morphe.jar
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: signed-release
+          path: |
+            build/dist/*.apk
+            build/dist/android-update.json
+            build/dist/build-info.json
+            build/dist/SHA256SUMS.txt
+            build/dist/release-notes.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+  playback:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: signed-release
+          path: build/release
+      - run: sudo chmod 666 /dev/kvm
+      - name: Verify candidate playback on Android 15
+        run: |
+          python3 experiments/embedded-gms/run-youtube-smoke.py --api 35 --main-only --playback-probe --apk build/release/YouTube-Calma-0.1.16.apk --output-dir build/playback/evidence --expected-version-code 1557278161
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: playback-candidate-evidence
+          path: build/playback/evidence/
+          retention-days: 7
