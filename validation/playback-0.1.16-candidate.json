@@ -1,0 +1,360 @@
+{
+  "status": "blocked-by-sign-in-verification",
+  "published": false,
+  "mainMerged": false,
+  "candidateVersion": "0.1.16",
+  "candidateVersionCode": 1557278161,
+  "candidateApkSha256": "927ccd1795974f9354f9eda860f382966a9c79cab0163b4a9db5611a90ca0cbc",
+  "baselineRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/39689247509",
+  "candidateRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/39689247604",
+  "candidateSignedBuildAndArtifactChecksPassed": true,
+  "authenticatedPlaybackVerified": false,
+  "qualitySwitchingVerified": false,
+  "screenOffAudioVerified": false,
+  "baselineProbe": {
+    "authenticated": false,
+    "passed": false,
+    "videoId": "aqz-KE-bpKQ",
+    "samples": [
+      {
+        "elapsedSeconds": 0,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 10,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 20,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 29,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 38,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 44,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 49,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 54,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 59,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 64,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 69,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 74,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 79,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 84,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 90,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 95,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 100,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 105,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 110,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 115,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 120,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 125,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 131,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 136,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 141,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 146,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 151,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 156,
+        "states": []
+      }
+    ],
+    "scope": "Public video, screen off before position 60 seconds; not an authenticated-device test",
+    "initialUi": {
+      "uiParsed": true,
+      "botVerification": false,
+      "signInRequired": false,
+      "networkError": false,
+      "integrityDialog": false,
+      "playerError": false
+    },
+    "screenTurnedOffBefore60Seconds": false,
+    "reportedPositionPast120Seconds": false,
+    "reason": "Playback not demonstrated; network/login gating or stale media-session data may make this inconclusive.",
+    "finalUi": {
+      "uiParsed": true,
+      "botVerification": true,
+      "signInRequired": true,
+      "networkError": false,
+      "integrityDialog": false,
+      "playerError": false
+    }
+  },
+  "candidateProbe": {
+    "authenticated": false,
+    "passed": false,
+    "videoId": "aqz-KE-bpKQ",
+    "samples": [
+      {
+        "elapsedSeconds": 0,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": false,
+          "signInRequired": false,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 9,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 17,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 26,
+        "states": [],
+        "ui": {
+          "uiParsed": true,
+          "botVerification": true,
+          "signInRequired": true,
+          "networkError": false,
+          "integrityDialog": false,
+          "playerError": false
+        }
+      },
+      {
+        "elapsedSeconds": 35,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 40,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 45,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 50,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 55,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 60,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 66,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 71,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 76,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 81,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 86,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 91,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 96,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 101,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 107,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 112,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 117,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 122,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 127,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 132,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 137,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 142,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 148,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 153,
+        "states": []
+      },
+      {
+        "elapsedSeconds": 158,
+        "states": []
+      }
+    ],
+    "scope": "Public video, screen off before position 60 seconds; not an authenticated-device test",
+    "initialUi": {
+      "uiParsed": true,
+      "botVerification": false,
+      "signInRequired": false,
+      "networkError": false,
+      "integrityDialog": false,
+      "playerError": false
+    },
+    "screenTurnedOffBefore60Seconds": false,
+    "reportedPositionPast120Seconds": false,
+    "reason": "Playback not demonstrated; network/login gating or stale media-session data may make this inconclusive.",
+    "finalUi": {
+      "uiParsed": true,
+      "botVerification": true,
+      "signInRequired": true,
+      "networkError": false,
+      "integrityDialog": false,
+      "playerError": false
+    }
+  }
+}

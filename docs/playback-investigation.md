@@ -26,4 +26,10 @@ Reference leads (not imported patch bundles):
 
 Run https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/39688388288 completed on 2026-10-21 UTC. The exact 0.1.15 APK installed on Android 15 and its main process remained alive. The public playback probe failed its requirement to demonstrate uninterrupted playback beyond 120 seconds. This is an inconclusive baseline for the user's authenticated failure, not evidence of a successful fix. The run log exposes the structural report; artifact download from GitHub's storage returned HTTP 403 in this workspace, so the detailed session samples and screenshot have not been inspected. Do not infer a specific on-screen error from that result.
 
-The local embedded-runtime suite also passed 38 tests. No candidate APK has been tested or released; the draft remains blocked on real playback validation.
+The local embedded-runtime suite also passed 38 tests. The first run did not exercise a candidate; see the signed-candidate comparison below for the subsequent result.
+
+## Signed-candidate comparison
+
+The 0.1.16 candidate (Android versionCode 1557278161) built with the permanent signer and passed artifact, manifest, preset, updater and embedded-runtime checks. Both the exact published 0.1.15 baseline and this candidate installed and kept their main processes alive on Android 15. Both displayed bot-verification/sign-in requirements before playback; neither established a measurable media session. Thus neither seeking, quality changes nor background audio could be validated. This is not evidence that the candidate fixes the user's authenticated failure.
+
+Sanitized evidence, hashes and workflow URLs: `validation/playback-0.1.16-candidate.json`. No release or catalog was published. The PR targets main and carries forward the embedded sources without reverting recent catalogs/signing changes; the build entry point delegates to the embedded builder. Publication and the main merge remain pending the user's requested completed fix.
