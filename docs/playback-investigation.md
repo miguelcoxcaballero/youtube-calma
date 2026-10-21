@@ -1,6 +1,6 @@
 # Playback investigation: position 60 seconds
 
-Status: investigation, not a verified fix or published release.
+Status: published to A at the user’s explicit request; playback fix remains unconfirmed.
 
 The user reports that every video stalls around position 60 seconds, including seeking beyond that position. Playback later resumes at low quality without normal quality selection. Background audio stops only when the screen was turned off before that transition. The earlier report that visionOS solved this was explicitly withdrawn. Do not force a visionOS preference migration or claim a separate battery-management cause.
 
@@ -37,3 +37,7 @@ Sanitized evidence, hashes and workflow URLs: `validation/playback-0.1.16-candid
 ## Publication authorization
 
 The user subsequently explicitly requested “Ponla en main y el A”, with the blocked playback validation already disclosed. Publish this candidate to A after signed upgrade checks; retain the note “Stream validation improvements. Playback fix unconfirmed.” Do not claim authenticated playback, seeking, quality selection or screen-off audio were verified. B remains unchanged.
+
+## Published A candidate
+
+Version 0.1.16 was published after the signed build, Android upgrade/launch matrix and public APK integrity checks passed. The user explicitly authorized main and A publication after the playback limitation was disclosed. See `validation/0.1.16.json`. Release: https://github.com/miguelcoxcaballero/youtube-calma/releases/tag/v0.1.16. B is unchanged.

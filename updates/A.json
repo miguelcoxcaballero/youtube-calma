@@ -2,15 +2,24 @@
   "schemaVersion": 1,
   "channel": "A",
   "latest": {
-    "version": "0.1.15",
-    "versionCode": 1557278160,
-    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.15/YouTube-Calma-0.1.15.apk",
-    "apkSha256": "11de2eb0aa61042ba51d590cbec6b101a9535778829ddcefd0efc9942caef6f1",
+    "version": "0.1.16",
+    "versionCode": 1557278161,
+    "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.16/YouTube-Calma-0.1.16.apk",
+    "apkSha256": "81cf5dbf932cd438a6643c8ef4af908a3e50ce7a9b97c5b3c215933c90f6460e",
     "apkSizeBytes": 284399346,
-    "changelog": "New icon. Default playback speed back to 1.0x.",
-    "releasedAt": "2026-10-20T15:35:50+00:00"
+    "changelog": "Stream validation improvements. Playback fix unconfirmed.",
+    "releasedAt": "2026-10-21T23:17:12+00:00"
   },
   "releases": [
+    {
+      "version": "0.1.16",
+      "versionCode": 1557278161,
+      "apkUrl": "https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.16/YouTube-Calma-0.1.16.apk",
+      "apkSha256": "81cf5dbf932cd438a6643c8ef4af908a3e50ce7a9b97c5b3c215933c90f6460e",
+      "apkSizeBytes": 284399346,
+      "changelog": "Stream validation improvements. Playback fix unconfirmed.",
+      "releasedAt": "2026-10-21T23:17:12+00:00"
+    },
     {
       "version": "0.1.15",
       "versionCode": 1557278160,

@@ -12,6 +12,10 @@ Personalización de **la APK proporcionada por el usuario**, YouTube ReVanced 20
 - Inhouse YouTube settings aparece debajo de ReVanced con su icono y la misma plantilla nativa de fila, incluida la reserva de espacio para iconos.
 - **Inhouse services updater** comprueba al abrir la app. En **Inhouse YouTube settings → Actualizaciones · A/B** puedes elegir canal y comprobar manualmente.
 
+## 0.1.16 · A
+
+[Descargar APK 0.1.16 · A](https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.16/YouTube-Calma-0.1.16.apk). Mejora la validación de streams antes de aceptar una respuesta. Publicada en A por petición expresa; el arreglo del corte del minuto, la calidad y el audio en segundo plano sigue sin confirmar porque YouTube exigió iniciar sesión en las pruebas de reproducción. [Validación de compilación y actualización](validation/0.1.16.json).
+
 ## microG integrado y aviso antes de actualizar (0.1.14 · B)
 
 Publicada en B por petición expresa tras confirmar el usuario que puede iniciar sesión. También llega a A. Conserva la integración de microG de la 0.1.13 y requiere Android 14 o posterior. Al actualizar desde una versión con microG externo hay que iniciar sesión de nuevo.

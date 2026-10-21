@@ -1,0 +1,51 @@
+{
+  "version": "0.1.16",
+  "versionCode": 1557278161,
+  "channel": "A",
+  "apkSha256": "81cf5dbf932cd438a6643c8ef4af908a3e50ce7a9b97c5b3c215933c90f6460e",
+  "apkSizeBytes": 284399346,
+  "sourceCommit": "e7efe662733e3bdd403b3eba95dd3196760ed4b4",
+  "workflowRun": "https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/39691101514",
+  "scope": "Signed build, artifact checks, Android upgrade and launch checks, verified public APK download",
+  "publishedAt": "2026-10-21T23:15:49Z",
+  "youtubePlaybackVerified": false,
+  "authenticatedPlaybackVerified": false,
+  "qualitySwitchingVerified": false,
+  "screenOffAudioVerified": false,
+  "playbackLimitation": "Baseline and candidate required Google bot-verification sign-in before playback in Android 15 testing.",
+  "publicationExplicitlyAuthorizedDespiteLimitation": true,
+  "jobs": [
+    {
+      "name": "android (36, 0.1.5, 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704)",
+      "conclusion": "success"
+    },
+    {
+      "name": "android (35, 0.1.14, ccc160caab94c66aedf9a781cbe58ec837a0e7c1755c77a046ca83bc6f1ed932)",
+      "conclusion": "success"
+    },
+    {
+      "name": "android (35, 0.1.5, 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704)",
+      "conclusion": "success"
+    },
+    {
+      "name": "android (35, 0.1.15, 11de2eb0aa61042ba51d590cbec6b101a9535778829ddcefd0efc9942caef6f1)",
+      "conclusion": "success"
+    },
+    {
+      "name": "android (34, 0.1.5, 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704)",
+      "conclusion": "success"
+    },
+    {
+      "name": "build",
+      "conclusion": "success"
+    },
+    {
+      "name": "publish",
+      "conclusion": "success"
+    },
+    {
+      "name": "public",
+      "conclusion": "success"
+    }
+  ]
+}
