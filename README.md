@@ -22,7 +22,7 @@ El popup muestra este aviso antes del botón **Update**, también en los cliente
 
 Verificada la APK firmada sobre la instalación 0.1.5 en Android 14, 15 y 16: código estrictamente mayor, identidad de instalación conservada y arranque sin microG externo ([informe](validation/0.1.14.json), [ejecución](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38305286531)).
 
-Verificado el aviso en modo claro y oscuro, en la comprobación manual y automática del actualizador de la 0.1.11: visible sin abrir Details y sin descarga automática ([informe](validation/updater-notice-0.1.14.json)). Los fuentes de la APK están en el [tag v0.1.14](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.14); utiliza su compilador `experiments/embedded-gms/build-youtube.py`. `main` conserva los fuentes del compilador anterior y aloja los catálogos.
+Verificado el aviso en modo claro y oscuro, en la comprobación manual y automática del actualizador de la 0.1.11: visible sin abrir Details y sin descarga automática ([informe](validation/updater-notice-0.1.14.json)). Los fuentes de la APK están en el [tag v0.1.14](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.14); utiliza su compilador `experiments/embedded-gms/build-youtube.py`. Este árbol incorpora los fuentes de microG integrado; los catálogos siguen publicándose en `main`.
 
 ## microG integrado (0.1.13 · A experimental)
 
@@ -32,7 +32,7 @@ La APK firmada final superó la actualización sobre 0.1.5 y el arranque sin mic
 
 La integración superó 39 comprobaciones por versión y llegó a la entrada de credenciales de Google en Android 14, 15 y 16 ([resultados](https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/38264289394)). El usuario confirmó después que puede iniciar sesión en su Galaxy S24 Ultra. Las pruebas automáticas no cubren sesiones autenticadas, reproducción, renovación de sesión ni notificaciones.
 
-El código de esta APK está en el [tag v0.1.13](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.13), con el compilador `experiments/embedded-gms/build-youtube.py`. Los fuentes de `main` conservan el compilador anterior con microG externo; los catálogos de actualización sí se publican en `main`. Para continuar esta integración, usa los fuentes del tag y consulta [AGENTS.md](AGENTS.md).
+El código de esta APK está en el [tag v0.1.13](https://github.com/miguelcoxcaballero/youtube-calma/tree/v0.1.13), con el compilador `experiments/embedded-gms/build-youtube.py`. Este árbol continúa esa integración; consulta [AGENTS.md](AGENTS.md) antes de compilar. Los tags conservan los fuentes exactos de cada versión publicada.
 
 ## Colores del actualizador (0.1.12 · A)
 
@@ -113,18 +113,19 @@ También se comprueban integridad de la APK, preset, bibliotecas nativas, proced
 
 ## Compilación
 
-Estos comandos corresponden al compilador anterior con microG externo. Para la 0.1.14, usa el tag y el compilador de microG integrado indicados arriba.
+La compilación actual incluye microG dentro de la APK. `scripts/build.py` utiliza el mismo compilador que `experiments/embedded-gms/build-youtube.py`.
 
-Requiere Java 17+, Python 3, SDK Android (plataforma 35 y build-tools 36), ECJ, Kotlin 2.0.21 y AndroidX Core. La APK base y las claves privadas no se incluyen en Git.
+Requiere Java 21, Python 3, SDK Android (plataforma 35 y build-tools 36), ECJ y Kotlin. La APK base y las claves privadas no se incluyen en Git.
 
 ```sh
 python3 scripts/setup-tools.py --android-sdk /ruta/al/sdk
-# Guarda el archivo exacto del usuario en base/youtube-original.apk.
-python3 scripts/build.py --morphe tools/morphe.jar \
+# Guarda la APK exacta del usuario en base/youtube-original.apk.
+# Usa el GmsCore fijado en experiments/embedded-gms/upstream.lock.json.
+python3 scripts/build.py --gms-apk /ruta/a/gmscore.apk --morphe tools/morphe.jar \
   --build-tools /ruta/al/sdk/build-tools/36.0.0 --keystore /ruta/a/calma.p12
-python3 tests/artifact.py
-python3 tests/updater.py
 ```
+
+La salida y el informe están en `build/embedded-youtube`. El workflow de publicación firmada prepara `build/dist`, comprueba el artefacto y ejecuta las pruebas de actualización antes de publicar. Una compilación local no publica ni modifica los catálogos.
 
 La clave debe tener alias `calma`; establece `CALMA_KEYSTORE_PASSWORD` para una clave propia. Una clave distinta impide actualizar instalaciones anteriores. Las versiones publicadas conservan la clave existente.
 
