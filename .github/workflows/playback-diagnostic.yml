@@ -1,0 +1,29 @@
+name: Playback diagnostic (no publication)
+on:
+  push:
+    branches: [fix/playback-stream-recovery]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - run: sudo chmod 666 /dev/kvm
+      - name: Download the exact installed release
+        run: |
+          mkdir -p build/playback
+          curl -fsSL --retry 3 -o build/playback/baseline.apk https://github.com/miguelcoxcaballero/youtube-calma/releases/download/v0.1.15/YouTube-Calma-0.1.15.apk
+          echo '11de2eb0aa61042ba51d590cbec6b101a9535778829ddcefd0efc9942caef6f1  build/playback/baseline.apk' | sha256sum -c -
+      - name: Public video with screen off before the first minute
+        run: |
+          python3 experiments/embedded-gms/run-youtube-smoke.py --api 35 --main-only --playback-probe --apk build/playback/baseline.apk --output-dir build/playback/evidence --expected-version-code 1557278160
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: playback-baseline-evidence
+          path: build/playback/evidence/
+          retention-days: 7

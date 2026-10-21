@@ -10,6 +10,8 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.Opcode
 import org.w3c.dom.Element
 
 private const val PKG = "app.revanced.android.youtube"
@@ -130,6 +132,28 @@ val behaviorPatch = bytecodePatch(name = "YouTube Calma subscriptions and naviga
             mutableClassDefBy(type).methods.single { it.name == name && it.parameterTypes.map { p -> p.toString() } == parameters }
         method("Lapp/revanced/extension/shared/Utils;", "setContext", listOf("Landroid/content/Context;")).addInstructions(0,
             "invoke-static/range {p0 .. p0}, $EXT->initialize(Landroid/content/Context;)V")
+        // Reject unusable adaptive formats before the existing client fallback
+        // loop accepts a response. No alternate patch bundle is applied.
+        val streamResponse = method("Lapp/revanced/extension/shared/spoof/requests/StreamingDataRequest;",
+            "buildPlayerResponseBuffer", listOf("Lapp/revanced/extension/shared/spoof/ClientType;", "Ljava/net/HttpURLConnection;"))
+        val responseReturns = streamResponse.implementation!!.instructions.withIndex()
+            .filter { it.value.opcode == Opcode.RETURN_OBJECT }.toList()
+        check(responseReturns.isNotEmpty())
+        for ((index, instruction) in responseReturns.asReversed()) {
+            val register = (instruction as OneRegisterInstruction).registerA
+            streamResponse.addInstructions(index, """
+                invoke-static/range {v$register .. v$register}, Les/calma/youtube/nativeapp/CalmaStreamResponse;->clean([B)[B
+                move-result-object v$register
+            """.trimIndent())
+        }
+        val routes = method("Lapp/revanced/extension/shared/spoof/requests/PlayerRoutes;", "<clinit>", emptyList())
+        val playerRoute = routes.implementation!!.instructions.withIndex().single { (_, instruction) ->
+            ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string == "player?fields=streamingData&alt=proto"
+        }
+        val routeRegister = (playerRoute.value as OneRegisterInstruction).registerA
+        routes.replaceInstruction(playerRoute.index,
+            "const-string v$routeRegister, \"player?fields=playabilityStatus,streamingData&alt=proto\"")
+
         for((name,params) in listOf(
             "navigationTabCreated" to listOf("Lapp/revanced/extension/youtube/shared/NavigationBar\$NavigationButton;","Landroid/view/View;"),
             "switchCreateWithNotificationButton" to listOf("Ljava/lang/String;")

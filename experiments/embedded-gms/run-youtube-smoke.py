@@ -187,6 +187,7 @@ def main() -> None:
     parser.add_argument('--upgrade-sha256', help='Required exact SHA-256 of --upgrade-from')
     parser.add_argument('--expected-version-code', type=int,
                         help='Require this actual Android versionCode after candidate installation')
+    parser.add_argument("--playback-probe", action="store_true", help="Attempt public playback with screen off before 60 seconds")
     args = parser.parse_args()
     if bool(args.upgrade_from) != bool(args.upgrade_sha256):
         parser.error('--upgrade-from and --upgrade-sha256 must be supplied together')
@@ -410,6 +411,13 @@ def main() -> None:
                         time.sleep(2)
                     if not report['googleCredentialEntryVisible']:
                         raise RuntimeError('Google credential entry did not appear; authenticated operation remains untested')
+        if args.playback_probe:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("playback_probe", ROOT / "scripts/probe-playback.py")
+            playback = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(playback)
+            playback.probe(output)
+            report["youtubePlaybackTested"] = True
         final = package_set()
         if final - before != {PACKAGE} or final & FORBIDDEN:
             raise RuntimeError('An unexpected external package appeared during the smoke test')
