@@ -164,7 +164,7 @@ jobs:
               'version': version, 'versionCode': code, 'required': True,
               'apkUrl': f"https://github.com/{os.environ['GH_REPO']}/releases/download/v{version}/{name}",
               'apkSha256': report['apkSha256'], 'apkSizeBytes': report['apkSizeBytes'],
-              'releaseNotes': 'New icon. Default playback speed back to 1.0x.',
+              'releaseNotes': 'Stream validation improvements. Playback fix unconfirmed.',
           }
           Path('android-update.json').write_text(json.dumps(manifest, indent=2) + '\n')
           shutil.copyfile('android-update.json', dist / 'android-update.json')
@@ -202,6 +202,7 @@ jobs:
           - {api: 35, from: '0.1.5', sha256: 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704}
           - {api: 36, from: '0.1.5', sha256: 2d6b2acd7b7c01ae5f23f0d3c80057d828f282b3ca3331a52d12378f9877c704}
           - {api: 35, from: '0.1.14', sha256: ccc160caab94c66aedf9a781cbe58ec837a0e7c1755c77a046ca83bc6f1ed932}
+          - {api: 35, from: '0.1.15', sha256: 11de2eb0aa61042ba51d590cbec6b101a9535778829ddcefd0efc9942caef6f1}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:

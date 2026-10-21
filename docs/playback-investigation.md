@@ -33,3 +33,7 @@ The local embedded-runtime suite also passed 38 tests. The first run did not exe
 The 0.1.16 candidate (Android versionCode 1557278161) built with the permanent signer and passed artifact, manifest, preset, updater and embedded-runtime checks. Both the exact published 0.1.15 baseline and this candidate installed and kept their main processes alive on Android 15. Both displayed bot-verification/sign-in requirements before playback; neither established a measurable media session. Thus neither seeking, quality changes nor background audio could be validated. This is not evidence that the candidate fixes the user's authenticated failure.
 
 Sanitized evidence, hashes and workflow URLs: `validation/playback-0.1.16-candidate.json`. No release or catalog was published. The PR targets main and carries forward the embedded sources without reverting recent catalogs/signing changes; the build entry point delegates to the embedded builder. Publication and the main merge remain pending the user's requested completed fix.
+
+## Publication authorization
+
+The user subsequently explicitly requested “Ponla en main y el A”, with the blocked playback validation already disclosed. Publish this candidate to A after signed upgrade checks; retain the note “Stream validation improvements. Playback fix unconfirmed.” Do not claim authenticated playback, seeking, quality selection or screen-off audio were verified. B remains unchanged.
