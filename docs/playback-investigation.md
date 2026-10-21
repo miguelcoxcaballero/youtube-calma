@@ -21,3 +21,9 @@ This does not make a server-denied stream accessible. It does not prove that the
 Reference leads (not imported patch bundles):
 - https://gitlab.com/ReVanced/revanced-patches/-/merge_requests/6983
 - https://github.com/ReVanced/revanced-manager/issues/3534
+
+## Android baseline result
+
+Run https://github.com/miguelcoxcaballero/youtube-calma/actions/runs/39688388288 completed on 2026-10-21 UTC. The exact 0.1.15 APK installed on Android 15 and its main process remained alive. The public playback probe failed its requirement to demonstrate uninterrupted playback beyond 120 seconds. This is an inconclusive baseline for the user's authenticated failure, not evidence of a successful fix. The run log exposes the structural report; artifact download from GitHub's storage returned HTTP 403 in this workspace, so the detailed session samples and screenshot have not been inspected. Do not infer a specific on-screen error from that result.
+
+The local embedded-runtime suite also passed 38 tests. No candidate APK has been tested or released; the draft remains blocked on real playback validation.
