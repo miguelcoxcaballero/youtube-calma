@@ -48,6 +48,7 @@ val packagePatch = resourcePatch(name = "YouTube Calma package") {
             }
             add(manifest, "uses-permission", mapOf("name" to "android.permission.REQUEST_INSTALL_PACKAGES"))
             add(app,"activity",mapOf("name" to "es.calma.youtube.UpdateActivity", "exported" to "false", "theme" to "@style/CalmaUpdatePopupTheme"))
+            add(app,"activity",mapOf("name" to "com.inhouse.services.updater.InstallActivity", "exported" to "false", "theme" to "@android:style/Theme.DeviceDefault.NoActionBar"))
             add(app,"activity",mapOf("name" to "es.calma.youtube.nativeapp.CalmaSettingsActivity", "exported" to "false", "theme" to "@style/CalmaSettingsTheme"))
             // YouTube already owns .fileprovider. Keep Photos' separate update
             // authority so PackageManager resolves our cache paths, not theirs.
