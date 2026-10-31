@@ -1,0 +1,115 @@
+name: Sign DuoAero
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Full DuoAero commit SHA to build
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: sign-duoaero
+  cancel-in-progress: false
+env:
+  INHOUSE_SIGNER_SHA256: 7133a4b3e4b9f9c4d2fbbd38b7dd2d44c7b8d0d7d16568bfe3da74a09e7887b6
+  DUOAERO_SHA: ${{ inputs.ref }}
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate commit
+        run: '[[ "$DUOAERO_SHA" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: miguelcoxcaballero/DuoAero
+          ref: ${{ inputs.ref }}
+          path: duoaero
+          persist-credentials: false
+      - name: Select Java 17
+        run: |
+          printf 'JAVA_HOME=%s\n' "$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          printf '%s/bin\n' "$JAVA_HOME_17_X64" >> "$GITHUB_PATH"
+      - name: Build exact source before loading the key
+        working-directory: duoaero
+        run: |
+          test "$(git rev-parse HEAD)" = "$DUOAERO_SHA"
+          python3 tests/validate_bank.py
+          python3 scripts/build.py
+      - name: Prepare the permanent Inhouse key from secret EJEMPLO
+        env:
+          KEYSTORE_SECRET: ${{ secrets.EJEMPLO }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, os, re, subprocess, sys
+          from pathlib import Path
+          def fail(message):
+              print('::error::' + message)
+              sys.exit(1)
+          expected = os.environ['INHOUSE_SIGNER_SHA256']
+          temp = Path(os.environ['RUNNER_TEMP'])
+          text = os.environ.get('KEYSTORE_SECRET', '')
+          # Plain or line-wrapped base64 of the keystore file; armour lines are ignored.
+          body = ''.join(line.strip() for line in text.splitlines() if not line.strip().startswith('-----'))
+          if not body:
+              fail('Repository secret EJEMPLO is missing or empty')
+          try:
+              raw = base64.b64decode(body, validate=True)
+          except ValueError:
+              fail('Secret EJEMPLO must hold the signing keystore (.p12/.jks) as base64 text')
+          source = temp / 'inhouse-source.keystore'
+          source.touch(mode=0o600)
+          source.write_bytes(raw)
+          env = dict(os.environ, KS_PASS='localbuild')
+          def keytool(*args, check=False, text=True):
+              return subprocess.run(['keytool', '-J-Duser.language=en', *map(str, args)], env=env,
+                                    capture_output=True, text=text, check=check)
+          listing = keytool('-list', '-v', '-keystore', source, '-storepass:env', 'KS_PASS')
+          if listing.returncode:
+              fail("keytool could not open the keystore in EJEMPLO with the build password 'localbuild'")
+          match = None
+          for alias in re.findall(r'^Alias name: (.+)$', listing.stdout, re.M):
+              certificate = keytool('-exportcert', '-keystore', source, '-storepass:env', 'KS_PASS', '-alias', alias, text=False)
+              if certificate.returncode == 0 and hashlib.sha256(certificate.stdout).hexdigest() == expected:
+                  match = alias
+                  break
+          if match is None:
+              fail(f'No entry in EJEMPLO has the permanent Inhouse certificate {expected}')
+          # Normalise to one PKCS#12 entry "inhouse" for apksigner.
+          target = temp / 'inhouse.p12'
+          target.unlink(missing_ok=True)
+          keytool('-importkeystore', '-noprompt', '-srckeystore', source, '-srcstorepass:env', 'KS_PASS', '-srcalias', match,
+                  '-destkeystore', target, '-deststoretype', 'PKCS12', '-destalias', 'inhouse',
+                  '-deststorepass:env', 'KS_PASS', '-destkeypass:env', 'KS_PASS', check=True)
+          source.unlink()
+          print('Permanent Inhouse key ready; certificate SHA-256', expected)
+          PY
+      - name: Sign and verify
+        run: |
+          tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          mkdir -p dist
+          KS_PASS=localbuild "$tools/apksigner" sign --ks "$RUNNER_TEMP/inhouse.p12" --ks-key-alias inhouse --ks-pass env:KS_PASS --key-pass env:KS_PASS --out dist/DuoAero-1.0.0.apk duoaero/dist/DuoAero-1.0.0-unsigned.apk
+          "$tools/apksigner" verify --print-certs dist/DuoAero-1.0.0.apk | tee signers.txt
+          "$tools/aapt2" dump badging dist/DuoAero-1.0.0.apk > badging.txt
+          grep -q "package: name='com.duoaero' versionCode='10000' versionName='1.0.0'" badging.txt
+          signers=$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' signers.txt | awk '{print $4}' | sort -u)
+          test "$signers" = "$INHOUSE_SIGNER_SHA256"
+          (cd dist && sha256sum DuoAero-1.0.0.apk > SHA256SUMS.txt)
+          python3 - <<'PY'
+          import json, os, hashlib
+          from pathlib import Path
+          apk=Path('dist/DuoAero-1.0.0.apk')
+          info={'source':'miguelcoxcaballero/DuoAero','sha':os.environ['DUOAERO_SHA'],'version':'1.0.0','versionCode':10000,'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'signerSha256':os.environ['INHOUSE_SIGNER_SHA256'],'signingRun':'https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID']}
+          Path('dist/build-info.json').write_text(json.dumps(info,indent=2)+'\n')
+          PY
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/inhouse.p12" "$RUNNER_TEMP/inhouse-source.keystore"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: duoaero-signed
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
