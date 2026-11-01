@@ -34,7 +34,7 @@ jobs:
           import json, os, re
           from pathlib import Path
           request=json.loads(Path('signer-host/.github/duoaero-sign-request.json').read_text())
-          assert request['version']=='1.3.0' and request['versionCode']==10300
+          assert request['version']=='1.3.1' and request['versionCode']==10301
           assert re.fullmatch(r'[0-9a-f]{40}',request['sourceSha'])
           assert re.fullmatch(r'[0-9a-f]{64}',request['unsignedSha256'])
           with open(os.environ['GITHUB_ENV'],'a') as output:
@@ -64,20 +64,20 @@ jobs:
           import hashlib, json, os, urllib.request
           from pathlib import Path
           info=json.loads(Path('release-input.json').read_text())
-          assert info['version']=='1.3.0' and info['versionCode']==10300
+          assert info['version']=='1.3.1' and info['versionCode']==10301
           if os.environ.get('DUOAERO_EXPECTED_SHA256'):
               assert info['sha256']==os.environ['DUOAERO_EXPECTED_SHA256']
           url=info['url']
-          assert url=='https://github.com/miguelcoxcaballero/DuoAero/releases/download/build-1.3.0/DuoAero-1.3.0-unsigned.apk'
-          target=Path('dist/DuoAero-1.3.0-unsigned.apk');target.parent.mkdir(exist_ok=True)
+          assert url=='https://github.com/miguelcoxcaballero/DuoAero/releases/download/build-1.3.1/DuoAero-1.3.1-unsigned.apk'
+          target=Path('dist/DuoAero-1.3.1-unsigned.apk');target.parent.mkdir(exist_ok=True)
           urllib.request.urlretrieve(url,target)
           assert hashlib.sha256(target.read_bytes()).hexdigest()==info['sha256']
           for name,digest in info['sources'].items():
               assert hashlib.sha256(Path(name).read_bytes()).hexdigest()==digest, name
           PY
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          "$tools/aapt2" dump badging dist/DuoAero-1.3.0-unsigned.apk > input-badging.txt
-          grep -q "package: name='com.duoaero' versionCode='10300' versionName='1.3.0'" input-badging.txt
+          "$tools/aapt2" dump badging dist/DuoAero-1.3.1-unsigned.apk > input-badging.txt
+          grep -q "package: name='com.duoaero' versionCode='10301' versionName='1.3.1'" input-badging.txt
           ! grep -q application-debuggable input-badging.txt
       - name: Prepare the permanent Inhouse key from secret EJEMPLO
         env:
@@ -131,18 +131,18 @@ jobs:
         run: |
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           mkdir -p dist
-          KS_PASS=localbuild "$tools/apksigner" sign --ks "$RUNNER_TEMP/inhouse.p12" --ks-key-alias inhouse --ks-pass env:KS_PASS --key-pass env:KS_PASS --out dist/DuoAero-1.3.0.apk duoaero/dist/DuoAero-1.3.0-unsigned.apk
-          "$tools/apksigner" verify --print-certs dist/DuoAero-1.3.0.apk | tee signers.txt
-          "$tools/aapt2" dump badging dist/DuoAero-1.3.0.apk > badging.txt
-          grep -q "package: name='com.duoaero' versionCode='10300' versionName='1.3.0'" badging.txt
+          KS_PASS=localbuild "$tools/apksigner" sign --ks "$RUNNER_TEMP/inhouse.p12" --ks-key-alias inhouse --ks-pass env:KS_PASS --key-pass env:KS_PASS --out dist/DuoAero-1.3.1.apk duoaero/dist/DuoAero-1.3.1-unsigned.apk
+          "$tools/apksigner" verify --print-certs dist/DuoAero-1.3.1.apk | tee signers.txt
+          "$tools/aapt2" dump badging dist/DuoAero-1.3.1.apk > badging.txt
+          grep -q "package: name='com.duoaero' versionCode='10301' versionName='1.3.1'" badging.txt
           signers=$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' signers.txt | awk '{print $4}' | sort -u)
           test "$signers" = "$INHOUSE_SIGNER_SHA256"
-          (cd dist && sha256sum DuoAero-1.3.0.apk > SHA256SUMS.txt)
+          (cd dist && sha256sum DuoAero-1.3.1.apk > SHA256SUMS.txt)
           python3 - <<'PY'
           import json, os, hashlib
           from pathlib import Path
-          apk=Path('dist/DuoAero-1.3.0.apk')
-          info={'source':'miguelcoxcaballero/DuoAero','sha':os.environ['DUOAERO_SHA'],'version':'1.3.0','versionCode':10300,'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'signerSha256':os.environ['INHOUSE_SIGNER_SHA256'],'signingRun':'https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID']}
+          apk=Path('dist/DuoAero-1.3.1.apk')
+          info={'source':'miguelcoxcaballero/DuoAero','sha':os.environ['DUOAERO_SHA'],'version':'1.3.1','versionCode':10301,'apkSha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'signerSha256':os.environ['INHOUSE_SIGNER_SHA256'],'signingRun':'https://github.com/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs/'+os.environ['GITHUB_RUN_ID']}
           Path('dist/build-info.json').write_text(json.dumps(info,indent=2)+'\n')
           PY
       - name: Remove signing material
