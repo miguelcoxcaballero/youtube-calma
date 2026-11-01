@@ -1,5 +1,8 @@
 name: Sign DuoAero
 on:
+  push:
+    branches: [main]
+    paths: ['.github/duoaero-sign-request.json']
   workflow_dispatch:
     inputs:
       ref:
@@ -19,12 +22,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        if: github.event_name == 'push'
+        with:
+          path: signer-host
+          persist-credentials: false
+      - name: Load pinned signing request
+        if: github.event_name == 'push'
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          request=json.loads(Path('signer-host/.github/duoaero-sign-request.json').read_text())
+          assert request['version']=='1.3.0' and request['versionCode']==10300
+          assert re.fullmatch(r'[0-9a-f]{40}',request['sourceSha'])
+          assert re.fullmatch(r'[0-9a-f]{64}',request['unsignedSha256'])
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write('DUOAERO_SHA='+request['sourceSha']+'\n')
+              output.write('DUOAERO_EXPECTED_SHA256='+request['unsignedSha256']+'\n')
+          PY
       - name: Validate commit
         run: '[[ "$DUOAERO_SHA" =~ ^[0-9a-f]{40}$ ]]'
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: miguelcoxcaballero/DuoAero
-          ref: ${{ inputs.ref }}
+          ref: ${{ env.DUOAERO_SHA }}
           path: duoaero
           persist-credentials: false
       - name: Select Java 17
@@ -39,10 +61,12 @@ jobs:
           python3 vendor/inhouse-services-updater/verify.py .
           node --test tests/auth.test.cjs tests/native-auth-storage.test.cjs
           python3 - <<'PY'
-          import hashlib, json, urllib.request
+          import hashlib, json, os, urllib.request
           from pathlib import Path
           info=json.loads(Path('release-input.json').read_text())
           assert info['version']=='1.3.0' and info['versionCode']==10300
+          if os.environ.get('DUOAERO_EXPECTED_SHA256'):
+              assert info['sha256']==os.environ['DUOAERO_EXPECTED_SHA256']
           url=info['url']
           assert url=='https://github.com/miguelcoxcaballero/DuoAero/releases/download/build-1.3.0/DuoAero-1.3.0-unsigned.apk'
           target=Path('dist/DuoAero-1.3.0-unsigned.apk');target.parent.mkdir(exist_ok=True)
@@ -54,6 +78,7 @@ jobs:
           tools="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
           "$tools/aapt2" dump badging dist/DuoAero-1.3.0-unsigned.apk > input-badging.txt
           grep -q "package: name='com.duoaero' versionCode='10300' versionName='1.3.0'" input-badging.txt
+          ! grep -q application-debuggable input-badging.txt
       - name: Prepare the permanent Inhouse key from secret EJEMPLO
         env:
           KEYSTORE_SECRET: ${{ secrets.EJEMPLO }}
